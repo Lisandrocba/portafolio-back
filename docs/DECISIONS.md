@@ -164,3 +164,10 @@ Formato: **Contexto** / **Decisión** / **Alternativa descartada** / **Consecuen
 - **Decisión**: la respuesta siempre es 200 con `reason: "OK" | "QUERY_LIMIT" | "ABUSE_LIMIT" | "GLOBAL_LIMIT" | "LLM_UNAVAILABLE"` y `contact: { email, linkedinUrl, phone }`.
 - **Alternativa descartada**: `503` cuando caen los providers. Es semánticamente correcto, pero el front tendría que leer el cuerpo de un error y separarlo del `503` de under-pressure, y el embudo pasaría a depender del camino de error.
 - **Consecuencia**: el front hace un `switch` sobre `reason`, no sobre el texto ni el status. Agregar un caso nuevo es sumar un valor al enum del schema.
+
+## ADR-024: Versionado automático con semantic-release
+
+- **Contexto**: el flujo es `rama de trabajo → develop → main`. Cada integración a `develop` y cada pase a producción necesita una versión identificable, sin que nadie tenga que acordarse de subirla.
+- **Decisión**: semantic-release en GitHub Actions. `develop` publica prereleases (`vX.Y.Z-beta.N`) y `main` publica estables (`vX.Y.Z`). La versión se deriva de Conventional Commits, validados localmente con commitlint en el hook `commit-msg`. El resultado son tags de git y GitHub Releases. No se commitea nada de vuelta: `package.json` queda en `0.0.0-semantic-release` y no hay `CHANGELOG.md`.
+- **Alternativa descartada**: commitear la versión y el changelog con `@semantic-release/git`. Cada release haría que el bot pushee un commit a `main` y a `develop`, lo que choca con las reglas de protección de ramas y agrega ruido al historial. Release Please también se descartó, porque exige un PR de release intermedio en cada rama.
+- **Consecuencia**: la versión vigente se lee de los tags (`git describe --tags`) o de GitHub Releases, no de `package.json`. Un commit con mal formato no rompe el release, pero el hook lo frena antes. `develop → main` siempre se integra con merge commit, y después de cada release estable se trae `main` a `develop` (back-merge, normalmente un fast-forward). Sin ese paso, `develop` no ve el tag estable y numera mal la próxima beta. Detalle en [GIT-WORKFLOW.md](GIT-WORKFLOW.md).
