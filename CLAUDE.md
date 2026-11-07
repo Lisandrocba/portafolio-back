@@ -49,6 +49,7 @@ test/helpers/         build-app.ts
 ## Convenciones
 
 - Código, identificadores y commits en **inglés**. Docs y textos del bot en **español**.
+- Commits con **Conventional Commits** (`feat:`, `fix:`, `docs:`…): de ahí sale la versión. Ramas `rama de trabajo → develop → main`; ver [docs/GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md).
 - Imports relativos con extensión `.js` (NodeNext). Nada de `any`; preferí `unknown` + parseo con Zod.
 - Archivos por feature: `experience.routes.ts`, `experience.service.ts`, etc. Tests colocados al lado (`experience.test.ts`).
 - Dependencias explícitas: factories `createXRepository(prisma)` → `createXService(repo)`, compuestas en `buildApp()` y pasadas a las rutas por opciones del plugin. Sin contenedor de DI.
@@ -87,3 +88,4 @@ Flujo típico de una feature: diseño con `tech-lead` → implementación → te
 - [docs/DECISIONS.md](docs/DECISIONS.md): ADRs
 - [docs/ROADMAP.md](docs/ROADMAP.md): fases y pendientes
 - [docs/SEED-DATA.md](docs/SEED-DATA.md): datos reales del CV para `prisma/seed.ts`
+- [docs/GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md): ramas, Conventional Commits y versionado automático

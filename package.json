@@ -1,8 +1,11 @@
 {
   "name": "portfolio-back",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "0.0.0-semantic-release",
+  "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.10.0"
+  },
   "author": "Lisandrocba <lisandrocba_7@hotmail.com>",
   "license": "MIT",
   "scripts": {
@@ -19,9 +22,13 @@
     "fastify": "^5.12.7"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@commitlint/types": "^21.2.3",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.0",
     "husky": "^9.1.7",
+    "semantic-release": "^25.0.9",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.6",
