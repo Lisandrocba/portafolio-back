@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -20,12 +20,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/modules/**/*.ts'],
-      exclude: [
-        'src/**/*.test.ts',
-        'src/**/*.d.ts',
-        'src/**/*.types.ts',
-        'src/**/index.ts',
-      ],
+      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/**/*.types.ts', 'src/**/index.ts'],
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
       // Only meaningful for the full suite (yarn test:coverage); a single-file run will fail them.
@@ -37,4 +32,4 @@ export default defineConfig({
       },
     },
   },
-})
+});

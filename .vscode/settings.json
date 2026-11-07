@@ -1,0 +1,8 @@
+{
+  // Prettier formats on save, using the version and config from this repo.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "prettier.requireConfig": true,
+  "files.eol": "\n",
+  "files.insertFinalNewline": true
+}

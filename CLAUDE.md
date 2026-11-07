@@ -23,14 +23,17 @@ El backend es también pieza de portfolio: estructura, documentación y tests ti
 
 ## Comandos
 
-| Comando | Estado |
-|---|---|
-| `yarn dev` (tsx watch) / `yarn build` (tsc) / `yarn start` | existen |
-| `yarn test`, `yarn test:watch`, `yarn test:coverage` | fase 1 |
-| `yarn typecheck` (`tsc --noEmit`) | fase 1 |
-| `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | fase 2 |
+| Comando                                                                                   | Estado  |
+| ----------------------------------------------------------------------------------------- | ------- |
+| `yarn dev` (tsx watch) / `yarn build` (tsc) / `yarn start`                                | existen |
+| `yarn test`, `yarn test:watch`, `yarn test:coverage`                                      | fase 1  |
+| `yarn typecheck` (`tsc --noEmit`)                                                         | existe  |
+| `yarn lint`, `yarn lint:fix`, `yarn format`, `yarn format:check`                          | existen |
+| `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | fase 2  |
 
-Antes de dar algo por terminado: `yarn typecheck && yarn test`.
+Antes de dar algo por terminado: `yarn lint && yarn typecheck && yarn test`.
+
+`typescript` en `package.json` es un alias de `@typescript/typescript6`: typescript-eslint necesita la API JS de TS 6. El compilador real es TS 7 (paquete `typescript7`, binario `tsc`). No "arreglar" el alias. Ver ADR-025.
 
 ## Estructura (detalle y porqués en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
 
