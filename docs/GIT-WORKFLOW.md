@@ -8,11 +8,11 @@ Trabajás en una rama propia, hacés PR a `develop` y al mergear sale una **beta
 
 ## Ramas
 
-| Rama | Rol | Versión que genera |
-|---|---|---|
-| `main` | Producción. Recibe merges desde `develop` (y hotfixes). | Estable: `v1.2.0` |
-| `develop` | Integración. Recibe los PR de las ramas de trabajo. | Prerelease: `v1.2.0-beta.1`, `beta.2`, … |
-| rama de trabajo | Una por desarrollo. Nombre libre y descriptivo (`config-vitest`, `modulo-experience`). Sale de `develop` y vuelve por PR. | Ninguna |
+| Rama            | Rol                                                                                                                       | Versión que genera                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `main`          | Producción. Recibe merges desde `develop` (y hotfixes).                                                                   | Estable: `v1.2.0`                        |
+| `develop`       | Integración. Recibe los PR de las ramas de trabajo.                                                                       | Prerelease: `v1.2.0-beta.1`, `beta.2`, … |
+| rama de trabajo | Una por desarrollo. Nombre libre y descriptivo (`config-vitest`, `modulo-experience`). Sale de `develop` y vuelve por PR. | Ninguna                                  |
 
 ```
 rama de trabajo ──PR──▶ develop ──PR──▶ main
@@ -41,7 +41,7 @@ git add .
 git commit -m "feat: add experience CRUD endpoints"
 ```
 
-Antes de cada commit corre también `yarn typecheck` (hook `pre-commit`), y antes de cada push, `yarn test:coverage` (hook `pre-push`).
+Antes de cada commit corre el hook `pre-commit`: [lint-staged](../.lintstagedrc.json) pasa ESLint (`--fix`) y Prettier **solo sobre los archivos stageados**, y después `yarn typecheck` sobre todo el proyecto. Si ESLint encuentra un error que no puede corregir solo, el commit se cancela y tus archivos quedan como estaban. Antes de cada push corre `yarn test:coverage` (hook `pre-push`).
 
 ### 3. Abrir el PR a `develop`
 
@@ -50,11 +50,11 @@ git push -u origin modulo-experience
 gh pr create --base develop --fill
 ```
 
-En el PR corre el CI: `typecheck`, `test:coverage` y `build`. Si falla, no se mergea.
+En el PR corre el CI: `format:check`, `lint`, `typecheck`, `test:coverage` y `build`. Si falla, no se mergea.
 
 ### 4. Mergear a `develop` → sale una beta
 
-Al mergear, el CI vuelve a verificar y corre semantic-release. Si hay algún `feat:` o `fix:` nuevo, publica una beta: tag `v1.2.0-beta.N` + GitHub Release marcada como *pre-release*.
+Al mergear, el CI vuelve a verificar y corre semantic-release. Si hay algún `feat:` o `fix:` nuevo, publica una beta: tag `v1.2.0-beta.N` + GitHub Release marcada como _pre-release_.
 
 Estrategia de merge:
 
@@ -109,20 +109,20 @@ Formato:
 
 ### Tipos y su efecto en la versión
 
-| Tipo | Cuándo usarlo | Efecto |
-|---|---|---|
-| `feat` | Funcionalidad nueva visible para quien usa la API | **minor** (`1.2.0` → `1.3.0`) |
-| `fix` | Corrección de un bug | **patch** (`1.2.0` → `1.2.1`) |
-| `perf` | Mejora de rendimiento sin cambio de comportamiento | **patch** |
-| `feat!` / `fix!` o footer `BREAKING CHANGE:` | Cambio que rompe el contrato (endpoint que cambia o desaparece, campo renombrado) | **major** (`1.2.0` → `2.0.0`) |
-| `refactor` | Cambio interno sin efecto visible | sin release |
-| `test` | Tests nuevos o corregidos | sin release |
-| `docs` | Documentación | sin release |
-| `build` | Dependencias, tsconfig, scripts | sin release |
-| `ci` | Workflows de GitHub Actions | sin release |
-| `chore` | Mantenimiento que no encaja en otro tipo | sin release |
-| `style` | Formato, sin cambio de lógica | sin release |
-| `revert` | Revierte un commit anterior | sin release (salvo que se configure) |
+| Tipo                                         | Cuándo usarlo                                                                     | Efecto                               |
+| -------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------ |
+| `feat`                                       | Funcionalidad nueva visible para quien usa la API                                 | **minor** (`1.2.0` → `1.3.0`)        |
+| `fix`                                        | Corrección de un bug                                                              | **patch** (`1.2.0` → `1.2.1`)        |
+| `perf`                                       | Mejora de rendimiento sin cambio de comportamiento                                | **patch**                            |
+| `feat!` / `fix!` o footer `BREAKING CHANGE:` | Cambio que rompe el contrato (endpoint que cambia o desaparece, campo renombrado) | **major** (`1.2.0` → `2.0.0`)        |
+| `refactor`                                   | Cambio interno sin efecto visible                                                 | sin release                          |
+| `test`                                       | Tests nuevos o corregidos                                                         | sin release                          |
+| `docs`                                       | Documentación                                                                     | sin release                          |
+| `build`                                      | Dependencias, tsconfig, scripts                                                   | sin release                          |
+| `ci`                                         | Workflows de GitHub Actions                                                       | sin release                          |
+| `chore`                                      | Mantenimiento que no encaja en otro tipo                                          | sin release                          |
+| `style`                                      | Formato, sin cambio de lógica                                                     | sin release                          |
+| `revert`                                     | Revierte un commit anterior                                                       | sin release (salvo que se configure) |
 
 Si un rango de commits tiene varios tipos, gana el de mayor impacto: un `feat` y tres `fix` dan un minor.
 
@@ -145,17 +145,17 @@ Coinciden con los módulos y piezas del repo: `profile`, `experience`, `technolo
 
 ### Qué rechaza commitlint
 
-| Mensaje | Problema |
-|---|---|
-| `agregué el módulo` | falta el tipo |
-| `feature: add module` | tipo inexistente (es `feat`) |
-| `feat: Add module` | descripción en mayúscula |
-| `feat: add module.` | punto final |
-| `feat:add module` | falta el espacio después de `:` |
+| Mensaje               | Problema                        |
+| --------------------- | ------------------------------- |
+| `agregué el módulo`   | falta el tipo                   |
+| `feature: add module` | tipo inexistente (es `feat`)    |
+| `feat: Add module`    | descripción en mayúscula        |
+| `feat: add module.`   | punto final                     |
+| `feat:add module`     | falta el espacio después de `:` |
 
 ## Ver las versiones
 
-- **GitHub → Releases**: cada versión con sus notas generadas automáticamente. Las betas aparecen como *pre-release*.
+- **GitHub → Releases**: cada versión con sus notas generadas automáticamente. Las betas aparecen como _pre-release_.
 - **Desde la terminal**:
 
 ```bash
@@ -213,9 +213,10 @@ Los tags y releases publicados no se borran ni se reutilizan. Publicá la correc
 
 ## Referencia: dónde está cada pieza
 
-| Archivo | Qué hace |
-|---|---|
-| [.releaserc.json](../.releaserc.json) | Ramas de release (`main` estable, `develop` beta) y plugins de semantic-release |
-| [.github/workflows/ci.yml](../.github/workflows/ci.yml) | Job `verify` en PR y push; job `release` solo en push a `develop`/`main` |
-| [commitlint.config.ts](../commitlint.config.ts) | Reglas de formato de commit (`@commitlint/config-conventional`) |
-| [.husky/](../.husky/) | Hooks locales: `commit-msg` (commitlint), `pre-commit` (typecheck), `pre-push` (tests con cobertura) |
+| Archivo                                                                                                                       | Qué hace                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| [.releaserc.json](../.releaserc.json)                                                                                         | Ramas de release (`main` estable, `develop` beta) y plugins de semantic-release                                    |
+| [.github/workflows/ci.yml](../.github/workflows/ci.yml)                                                                       | Job `verify` en PR y push; job `release` solo en push a `develop`/`main`                                           |
+| [commitlint.config.ts](../commitlint.config.ts)                                                                               | Reglas de formato de commit (`@commitlint/config-conventional`)                                                    |
+| [.husky/](../.husky/)                                                                                                         | Hooks locales: `commit-msg` (commitlint), `pre-commit` (lint-staged + typecheck), `pre-push` (tests con cobertura) |
+| [eslint.config.ts](../eslint.config.ts), [.prettierrc.json](../.prettierrc.json), [.lintstagedrc.json](../.lintstagedrc.json) | Reglas de lint, formato y qué corre sobre los archivos stageados                                                   |

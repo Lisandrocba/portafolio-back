@@ -1,1 +1,2 @@
-yarn typecheck
+yarn -s lint-staged
+yarn -s typecheck

@@ -1,6 +1,6 @@
 # Roadmap
 
-Fases en orden. Cada fase termina con `yarn typecheck && yarn test` en verde y docs actualizados si algo cambió.
+Fases en orden. Cada fase termina con `yarn lint && yarn typecheck && yarn test` en verde y docs actualizados si algo cambió.
 
 ## Fase 0: Documentación ✅
 
@@ -10,7 +10,7 @@ CLAUDE.md + `docs/`. Sin código de aplicación.
 
 - [ ] Dependencias: `@fastify/type-provider-zod`, `zod`, `@fastify/{env,helmet,cors,rate-limit,under-pressure,sensible,swagger,swagger-ui}`, `fastify-plugin`, `vitest`, `undici`.
 - [ ] `tsconfig`: agregar `types: ["node"]`, quitar `jsx`; separar `tsconfig.json` (typecheck de `src/`, `test/`, `prisma/`) de `tsconfig.build.json` (emite solo `src/`).
-- [ ] Verificar que TypeScript 7 convive con Vitest y el resto del tooling; si algo necesita la API JS de TS, evaluar.
+- [x] Verificar que TypeScript 7 convive con Vitest y el resto del tooling. Vitest, tsx y commitlint andan con TS 7; typescript-eslint necesita la API de TS 6 (resuelto con alias, ADR-025).
 - [ ] Refactor `app.ts` → `buildApp(opts)`; `server.ts` con graceful shutdown (SIGINT/SIGTERM).
 - [ ] `config/env.ts` con todas las variables de [API.md](API.md#variables-de-entorno) + `.env.example`.
 - [ ] `plugins/security.ts`, `plugins/swagger.ts` (`/docs`), error handler en `lib/errors.ts`.
@@ -78,14 +78,14 @@ CLAUDE.md + `docs/`. Sin código de aplicación.
 
 ## Pendiente de decidir
 
-| Tema | Opciones / notas | Bloquea |
-|---|---|---|
-| **Hosting del Fastify** | Requisitos: proceso long-running (no serverless puro, por el tope en memoria), una instancia, HTTPS, env vars. Si el free tier duerme la instancia, se suma cold start y se reinicia el tope global (aceptable). Candidatos a evaluar: Render, Railway, Fly.io, Koyeb. | Fase 6 |
-| **Proveedor de mail para leads** | Necesita API HTTP y free tier suficiente para pocos mails por día. Ojo: el destino es Hotmail/Outlook, que es estricto con la entregabilidad (dominio verificado, SPF/DKIM). Candidatos a evaluar: Resend, Brevo, Postmark, SMTP de Gmail. | Fase 5 |
-| **Modelos concretos** | ID exacto del modelo de Groq y de Gemini Flash-Lite (`GROQ_MODEL`, `GEMINI_MODEL`); confirmar que ambos soportan JSON mode. | Fase 4 |
-| **URL del portfolio** | Falta la URL de GitHub Pages: `Profile.portfolioUrl` y `CORS_ORIGIN`. | Fase 2 (seed) / Fase 6 |
-| **DB de test** | Branch de Neon dedicado o Postgres local en Docker. Recomendación: Docker local para tests (rápido, offline, desechable) y Neon solo para dev/prod. | Fase 2 |
-| **Retención de conversaciones** | Purgar conversaciones sin lead después de N días (¿90?). Las que tienen lead no se borran (`Restrict`). | Fase 8 |
-| **Meses del título de grado** | "2017 a 2019" sin meses: se guarda `2017-01-01` / `2019-01-01` provisoriamente. | Fase 2 (seed) |
-| **Vínculos faltantes del seed** | Ver "Para revisar" en [SEED-DATA.md](SEED-DATA.md): "SQL" genérico, tecnologías mencionadas en viñetas pero no en el stack, y tecnologías por formación. | Post fase 2 (por Postman) |
-| **Datos de perfil sin cargar** | `availability` (null) y `level` / `yearsOfUse` de cada tecnología. | Post fase 2 (por Postman) |
+| Tema                             | Opciones / notas                                                                                                                                                                                                                                                       | Bloquea                   |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| **Hosting del Fastify**          | Requisitos: proceso long-running (no serverless puro, por el tope en memoria), una instancia, HTTPS, env vars. Si el free tier duerme la instancia, se suma cold start y se reinicia el tope global (aceptable). Candidatos a evaluar: Render, Railway, Fly.io, Koyeb. | Fase 6                    |
+| **Proveedor de mail para leads** | Necesita API HTTP y free tier suficiente para pocos mails por día. Ojo: el destino es Hotmail/Outlook, que es estricto con la entregabilidad (dominio verificado, SPF/DKIM). Candidatos a evaluar: Resend, Brevo, Postmark, SMTP de Gmail.                             | Fase 5                    |
+| **Modelos concretos**            | ID exacto del modelo de Groq y de Gemini Flash-Lite (`GROQ_MODEL`, `GEMINI_MODEL`); confirmar que ambos soportan JSON mode.                                                                                                                                            | Fase 4                    |
+| **URL del portfolio**            | Falta la URL de GitHub Pages: `Profile.portfolioUrl` y `CORS_ORIGIN`.                                                                                                                                                                                                  | Fase 2 (seed) / Fase 6    |
+| **DB de test**                   | Branch de Neon dedicado o Postgres local en Docker. Recomendación: Docker local para tests (rápido, offline, desechable) y Neon solo para dev/prod.                                                                                                                    | Fase 2                    |
+| **Retención de conversaciones**  | Purgar conversaciones sin lead después de N días (¿90?). Las que tienen lead no se borran (`Restrict`).                                                                                                                                                                | Fase 8                    |
+| **Meses del título de grado**    | "2017 a 2019" sin meses: se guarda `2017-01-01` / `2019-01-01` provisoriamente.                                                                                                                                                                                        | Fase 2 (seed)             |
+| **Vínculos faltantes del seed**  | Ver "Para revisar" en [SEED-DATA.md](SEED-DATA.md): "SQL" genérico, tecnologías mencionadas en viñetas pero no en el stack, y tecnologías por formación.                                                                                                               | Post fase 2 (por Postman) |
+| **Datos de perfil sin cargar**   | `availability` (null) y `level` / `yearsOfUse` de cada tecnología.                                                                                                                                                                                                     | Post fase 2 (por Postman) |

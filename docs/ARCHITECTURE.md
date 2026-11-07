@@ -68,18 +68,18 @@ test/
 
 ## Por qué cada decisión
 
-| Decisión | Por qué |
-|---|---|
-| `app.ts` no hace `listen` | `app.inject()` ejecuta requests en memoria sin abrir sockets. Tests rápidos, paralelos y sin puertos ocupados. `server.ts` es lo único que toca red. |
-| `buildApp(opts)` acepta overrides | Los tests pueden pasar env propio. No hace falta mockear módulos con `vi.mock`. |
-| Plugins con `fastify-plugin` | Sin él, cada `register` crea un scope encapsulado y los decorators (`app.prisma`, `app.requireAdmin`) no serían visibles en los módulos. |
-| Repositories aíslan Prisma | Los services se testean con repos falsos. Cambiar de ORM o de query toca un archivo. Los errores `P2025`/`P2002` se traducen a dominio ahí mismo. |
-| Factories en vez de clases singleton | Las dependencias quedan visibles en la firma. `chat.service` recibe los services del CV por parámetro, sin importarlos. |
-| Schemas de respuesta pública separados | El serializer de Zod descarta las claves que no están en el schema. Aunque el repository devuelva `published`, `createdAt` o un campo nuevo, el schema público no lo deja salir. |
-| Providers con `fetch` nativo | Sin SDKs: menos dependencias, y `MockAgent` de undici intercepta todo. Además Groq es compatible con OpenAI y es un POST simple. |
-| `profile-context.ts` lee services, no repositories | Reusa los mismos filtros (`published`, `clientPublic`, orden) que la API pública. Lo que ve el bot = lo que ve el portfolio. |
-| `quota.service.ts` separado | Concentra la lógica de negocio del embudo (límite, tope global, `showCta`). Se testea sin LLM ni HTTP. |
-| `src/generated/prisma` | Prisma 7 exige `output` explícito y ya no genera en `node_modules`. De ahí se importan cliente y enums. |
+| Decisión                                           | Por qué                                                                                                                                                                          |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.ts` no hace `listen`                          | `app.inject()` ejecuta requests en memoria sin abrir sockets. Tests rápidos, paralelos y sin puertos ocupados. `server.ts` es lo único que toca red.                             |
+| `buildApp(opts)` acepta overrides                  | Los tests pueden pasar env propio. No hace falta mockear módulos con `vi.mock`.                                                                                                  |
+| Plugins con `fastify-plugin`                       | Sin él, cada `register` crea un scope encapsulado y los decorators (`app.prisma`, `app.requireAdmin`) no serían visibles en los módulos.                                         |
+| Repositories aíslan Prisma                         | Los services se testean con repos falsos. Cambiar de ORM o de query toca un archivo. Los errores `P2025`/`P2002` se traducen a dominio ahí mismo.                                |
+| Factories en vez de clases singleton               | Las dependencias quedan visibles en la firma. `chat.service` recibe los services del CV por parámetro, sin importarlos.                                                          |
+| Schemas de respuesta pública separados             | El serializer de Zod descarta las claves que no están en el schema. Aunque el repository devuelva `published`, `createdAt` o un campo nuevo, el schema público no lo deja salir. |
+| Providers con `fetch` nativo                       | Sin SDKs: menos dependencias, y `MockAgent` de undici intercepta todo. Además Groq es compatible con OpenAI y es un POST simple.                                                 |
+| `profile-context.ts` lee services, no repositories | Reusa los mismos filtros (`published`, `clientPublic`, orden) que la API pública. Lo que ve el bot = lo que ve el portfolio.                                                     |
+| `quota.service.ts` separado                        | Concentra la lógica de negocio del embudo (límite, tope global, `showCta`). Se testea sin LLM ni HTTP.                                                                           |
+| `src/generated/prisma`                             | Prisma 7 exige `output` explícito y ya no genera en `node_modules`. De ahí se importan cliente y enums.                                                                          |
 
 ## Orden de registro en `buildApp()`
 
