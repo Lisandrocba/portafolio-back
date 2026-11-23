@@ -7,7 +7,7 @@ API REST del portfolio de Lisandro Córdoba. Dos propósitos:
 
 El backend es también pieza de portfolio: estructura, documentación y tests tienen que estar a la altura.
 
-**Estado**: fase 1 (fundaciones) completa. `POST /chat` funciona de punta a punta, adelantado a las fases 2 y 3: usa un repository **en memoria** (`chat.memory-repository.ts`, se pierde al reiniciar) y como contexto del CV una copia fija de SEED-DATA.md (`FALLBACK_CONTEXT` en `system-prompt.ts`). Ver [docs/ROADMAP.md](docs/ROADMAP.md).
+**Estado**: fases 1 (fundaciones) y 2 (datos) completas. `POST /chat` funciona de punta a punta y guarda en Postgres; como contexto del CV usa todavía una copia fija de SEED-DATA.md (`FALLBACK_CONTEXT` en `system-prompt.ts`) hasta la fase 3. Ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Stack
 
@@ -27,12 +27,13 @@ El backend es también pieza de portfolio: estructura, documentación y tests ti
 | Comando                                                                                   | Estado  |
 | ----------------------------------------------------------------------------------------- | ------- |
 | `yarn dev` (tsx watch) / `yarn build` (tsc) / `yarn start`                                | existen |
-| `yarn test`, `yarn test:watch`, `yarn test:coverage`                                      | existen |
+| `yarn test`, `yarn test:watch`, `yarn test:coverage` (necesitan `yarn test:db`)           | existen |
+| `yarn test:db` (Postgres de test en Docker, puerto 5433)                                  | existe  |
 | `yarn typecheck` (`tsc --noEmit`)                                                         | existe  |
 | `yarn lint`, `yarn lint:fix`, `yarn format`, `yarn format:check`                          | existen |
-| `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | fase 2  |
+| `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | existen |
 
-Antes de dar algo por terminado: `yarn lint && yarn typecheck && yarn test`.
+Antes de dar algo por terminado: `yarn lint && yarn typecheck && yarn test`. Los tests usan el Postgres de `docker-compose.yml` (o el `DATABASE_URL` de `.env.test`); nunca Neon.
 
 `typescript` en `package.json` es un alias de `@typescript/typescript6`: typescript-eslint necesita la API JS de TS 6. El compilador real es TS 7 (paquete `typescript7`, binario `tsc`). No "arreglar" el alias. Ver ADR-025.
 

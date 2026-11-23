@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
+    globalSetup: ['./test/global-setup.ts'],
     setupFiles: ['./test/setup.ts'],
     globals: false, // explicit imports from 'vitest': no ambient globals to type
     clearMocks: true,

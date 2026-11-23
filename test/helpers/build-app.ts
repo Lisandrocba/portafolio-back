@@ -1,5 +1,6 @@
 import { buildApp } from '../../src/app.js';
 import type { App } from '../../src/lib/types.js';
+import { TEST_DATABASE_URL } from './database.js';
 
 /**
  * Fake but valid values for every required variable. Nothing here is a real secret,
@@ -8,7 +9,7 @@ import type { App } from '../../src/lib/types.js';
 export const TEST_ENV = {
   NODE_ENV: 'test',
   LOG_LEVEL: 'silent',
-  DATABASE_URL: 'postgresql://test:test@localhost:5432/portfolio_test',
+  DATABASE_URL: TEST_DATABASE_URL,
   CORS_ORIGIN: 'http://localhost:5173',
   ADMIN_API_KEY: 'test-admin-key-0123456789abcdef0123',
   IP_HASH_SALT: 'test-ip-hash-salt-0123456789',
