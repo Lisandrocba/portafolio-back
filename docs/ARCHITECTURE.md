@@ -11,16 +11,18 @@
 
 ```
 src/
-  app.ts                    buildApp(opts?) → FastifyInstance. Registra todo, NO hace listen
-  server.ts                 buildApp() + listen + graceful shutdown (SIGINT/SIGTERM → app.close())
+  app.ts                    buildApp(opts?) → App. Valida env, registra todo, NO hace listen
+  server.ts                 carga .env (si existe) + buildApp() + listen + graceful shutdown (SIGINT/SIGTERM → app.close(), con timeout)
   config/
-    env.ts                  schema de @fastify/env; expone app.config tipado
+    env.ts                  interfaz Env + schema (JSONSchemaType<Env>) + loadConfig() con env-schema; tipa app.config
+    logger.ts               opciones de Pino: level, redact, serializer de req sin IP
   plugins/                  todos envueltos con fastify-plugin (comparten scope con la app)
     security.ts             helmet, cors, rate-limit (global), under-pressure, sensible
     swagger.ts              @fastify/swagger + swagger-ui en /docs; jsonSchemaTransform del type provider
     auth.ts                 decora app.requireAdmin (preHandler que valida x-admin-key)
     prisma.ts               crea PrismaClient con adapter-pg, decora app.prisma, $disconnect en onClose
   modules/
+    health/                 GET /health (ruta propia con schema Zod, ver ADR-027)
     profile/                Profile (singleton) + Language
       profile.routes.ts
       profile.service.ts    incluye yearsOfExperience derivado
@@ -34,16 +36,20 @@ src/
       chat.routes.ts
       chat.service.ts       orquesta: conversación → cuota → prompt → providers → persistencia
       chat.repository.ts    Conversation + Message
-      chat.schemas.ts
+      chat.schemas.ts       request/response de POST /chat, ChatReason, LlmOutputSchema
+      chat.replies.ts       respuestas fijas sin LLM (es/en), por reason
       quota.service.ts      tope por visitante y día (derivado) + tope diario global (memoria)
       chat.test.ts
+      quota.test.ts
       prompt/
         system-prompt.ts    reglas fijas del bot (privacidad, conversión, formato JSON)
-        profile-context.ts  arma el contexto del CV leyendo los services del CV
+        profile-context.ts  formatProfileContext(snapshot): función pura; chat.service le pasa los datos de los services del CV
+        prompt.test.ts
       providers/
         llm.types.ts        interfaz LlmProvider + tipos de request/response
-        groq.provider.ts
-        gemini.provider.ts
+        llm.errors.ts       LlmProviderError con kind (timeout, rate_limit, server…)
+        openai-compatible.provider.ts  una clase para Groq y Gemini (cambia la baseURL) + createLlmProviders(config)
+        providers.test.ts
     leads/
       leads.routes.ts
       leads.service.ts      persiste el lead y dispara la notificación por mail
@@ -52,7 +58,9 @@ src/
       leads.test.ts
   lib/
     errors.ts               errores de dominio (NotFoundError, ConflictError…) + error handler
-    types.ts                tipos compartidos (FastifyZod, etc.)
+    types.ts                tipos compartidos (App = FastifyInstance con ZodTypeProvider)
+    ip-hash.ts              createIpHasher(salt): HMAC-SHA256 de la IP
+    not-implemented.ts      placeholder de los esqueletos; borrar cuando nada lo use
     prisma.ts               factory del PrismaClient (usada por plugins/prisma.ts y el seed)
   generated/prisma/         cliente generado por Prisma 7 (gitignored, se regenera con db:generate)
 prisma/
@@ -60,37 +68,44 @@ prisma/
   migrations/
   seed.ts
 prisma.config.ts            config de Prisma 7 (URL directa para migraciones)
+docker-compose.yml          Postgres de test (yarn test:db), puerto 5433, datos en tmpfs
 test/
-  helpers/build-app.ts      buildApp() con env de test + MockAgent instalado + limpieza de DB
+  global-setup.ts           una vez por corrida: prisma migrate deploy contra la DB de test
+  setup.ts                  carga .env.test y se niega a correr contra una DB que no sea de test
+  app.test.ts               env, /docs/json, forma de errores, headers de seguridad, CORS
+  helpers/build-app.ts      buildTestApp(overrides): buildApp() con TEST_ENV
+  helpers/database.ts       TEST_DATABASE_URL + resetDatabase(prisma): TRUNCATE de todas las tablas
+  helpers/memory-chat-repository.ts  ChatRepository en memoria: fake para los tests de chat.service
+  helpers/mock-llm.ts       installMockLlm(): MockAgent global + interceptores de Groq/Gemini
 ```
 
 > `leads.repository.ts` no figuraba en la estructura original; se agrega para no romper la regla "los services no tocan Prisma".
 
 ## Por qué cada decisión
 
-| Decisión | Por qué |
-|---|---|
-| `app.ts` no hace `listen` | `app.inject()` ejecuta requests en memoria sin abrir sockets. Tests rápidos, paralelos y sin puertos ocupados. `server.ts` es lo único que toca red. |
-| `buildApp(opts)` acepta overrides | Los tests pueden pasar env propio. No hace falta mockear módulos con `vi.mock`. |
-| Plugins con `fastify-plugin` | Sin él, cada `register` crea un scope encapsulado y los decorators (`app.prisma`, `app.requireAdmin`) no serían visibles en los módulos. |
-| Repositories aíslan Prisma | Los services se testean con repos falsos. Cambiar de ORM o de query toca un archivo. Los errores `P2025`/`P2002` se traducen a dominio ahí mismo. |
-| Factories en vez de clases singleton | Las dependencias quedan visibles en la firma. `chat.service` recibe los services del CV por parámetro, sin importarlos. |
-| Schemas de respuesta pública separados | El serializer de Zod descarta las claves que no están en el schema. Aunque el repository devuelva `published`, `createdAt` o un campo nuevo, el schema público no lo deja salir. |
-| Providers con `fetch` nativo | Sin SDKs: menos dependencias, y `MockAgent` de undici intercepta todo. Además Groq es compatible con OpenAI y es un POST simple. |
-| `profile-context.ts` lee services, no repositories | Reusa los mismos filtros (`published`, `clientPublic`, orden) que la API pública. Lo que ve el bot = lo que ve el portfolio. |
-| `quota.service.ts` separado | Concentra la lógica de negocio del embudo (límite, tope global, `showCta`). Se testea sin LLM ni HTTP. |
-| `src/generated/prisma` | Prisma 7 exige `output` explícito y ya no genera en `node_modules`. De ahí se importan cliente y enums. |
+| Decisión                                           | Por qué                                                                                                                                                                          |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `app.ts` no hace `listen`                          | `app.inject()` ejecuta requests en memoria sin abrir sockets. Tests rápidos, paralelos y sin puertos ocupados. `server.ts` es lo único que toca red.                             |
+| `buildApp(opts)` acepta overrides                  | Los tests pueden pasar env propio. No hace falta mockear módulos con `vi.mock`.                                                                                                  |
+| Plugins con `fastify-plugin`                       | Sin él, cada `register` crea un scope encapsulado y los decorators (`app.prisma`, `app.requireAdmin`) no serían visibles en los módulos.                                         |
+| Repositories aíslan Prisma                         | Los services se testean con repos falsos. Cambiar de ORM o de query toca un archivo. Los errores `P2025`/`P2002` se traducen a dominio ahí mismo.                                |
+| Factories en vez de clases singleton               | Las dependencias quedan visibles en la firma. `chat.service` recibe los services del CV por parámetro, sin importarlos.                                                          |
+| Schemas de respuesta pública separados             | El serializer de Zod descarta las claves que no están en el schema. Aunque el repository devuelva `published`, `createdAt` o un campo nuevo, el schema público no lo deja salir. |
+| Un provider compatible con OpenAI                  | Groq y Gemini hablan el mismo formato: una clase con el SDK `openai` y dos `baseURL`. El SDK usa el `fetch` global, así que `MockAgent` de undici lo intercepta igual (ADR-004). |
+| `profile-context.ts` lee services, no repositories | Reusa los mismos filtros (`published`, `clientPublic`, orden) que la API pública. Lo que ve el bot = lo que ve el portfolio.                                                     |
+| `quota.service.ts` separado                        | Concentra la lógica de negocio del embudo (límite, tope global, `showCta`). Se testea sin LLM ni HTTP.                                                                           |
+| `src/generated/prisma`                             | Prisma 7 exige `output` explícito y ya no genera en `node_modules`. De ahí se importan cliente y enums.                                                                          |
 
 ## Orden de registro en `buildApp()`
 
-1. `@fastify/env` (todo lo demás depende de `app.config`)
+1. `loadConfig()` **antes** de `Fastify()`: el nivel del logger y `trustProxy` son opciones del constructor. Después `app.decorate('config', config)` (ADR-026)
 2. Type provider Zod: `setValidatorCompiler` / `setSerializerCompiler`
 3. `plugins/security.ts` (helmet con CSP compatible con swagger-ui, cors, rate-limit, under-pressure, sensible)
 4. `plugins/swagger.ts` (antes que las rutas, para que las capture)
 5. `plugins/prisma.ts`, `plugins/auth.ts`
 6. Error handler global (`lib/errors.ts`)
 7. Composición: repositories → services → `register(routes, { prefix, service })` por módulo
-8. `GET /health` (lo provee under-pressure)
+8. `GET /health`: módulo `health` propio. La ruta de under-pressure declara JSON Schema y el serializer Zod lo rechaza (ADR-027)
 
 ## Flujo de un request de punta a punta
 

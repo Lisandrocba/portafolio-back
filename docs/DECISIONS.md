@@ -28,9 +28,9 @@ Formato: **Contexto** / **Decisión** / **Alternativa descartada** / **Consecuen
 ## ADR-004: Interfaz común de LLM y failover por loop
 
 - **Contexto**: se usa la cuota gratuita de Groq, que puede agotarse o caerse. Hay un fallback (Gemini Flash-Lite).
-- **Decisión**: `llm.types.ts` define `LlmProvider { name; complete(req): Promise<LlmResult> }`. `chat.service` recibe un array ordenado y lo recorre hasta que uno responde. Implementación con `fetch` nativo, sin SDKs. La key de Gemini va por header (`x-goog-api-key`), no por query string.
-- **Alternativa descartada**: SDKs oficiales (`openai`, `@google/genai`) o librerías de orquestación (LangChain, Vercel AI SDK). Más dependencias para dos POST, y complican interceptar con `MockAgent`.
-- **Consecuencia**: agregar un provider = un archivo + sumarlo al array. Tests de failover deterministas con `MockAgent`. Cada provider mapea su formato (JSON mode, conteo de tokens) a `LlmResult`.
+- **Decisión**: `llm.types.ts` define `LlmProvider { name; complete(req): Promise<LlmResult> }`. `chat.service` recibe un array ordenado y lo recorre hasta que uno responde. Groq y Gemini exponen la API de chat completions de OpenAI, así que hay **una sola clase**, `OpenAiCompatibleProvider` (SDK `openai`), y cada provider es una instancia con su `baseURL`. El SDK va con `maxRetries: 0` (el failover es del service) y sus errores se traducen a `LlmProviderError`. La key de Gemini va por header (`Authorization: Bearer`), nunca por query string.
+- **Alternativa descartada**: (a) un archivo por provider con `fetch` nativo: más código repetido para dos APIs que hablan el mismo formato; (b) SDKs propios de cada proveedor (`@google/genai`) o librerías de orquestación (LangChain, Vercel AI SDK): más dependencias y formatos distintos para el mismo POST.
+- **Consecuencia**: agregar un provider compatible con OpenAI = una instancia más en `createLlmProviders()`. El SDK usa el `fetch` global, así que `MockAgent` lo intercepta y los tests de failover siguen siendo deterministas (el mock tiene que responder con `content-type: application/json`; lo hace `test/helpers/mock-llm.ts`). Si un provider futuro no es compatible con OpenAI, implementa `LlmProvider` en su propio archivo.
 
 ## ADR-005: Contexto del bot leído de los services en cada request
 
@@ -164,3 +164,31 @@ Formato: **Contexto** / **Decisión** / **Alternativa descartada** / **Consecuen
 - **Decisión**: la respuesta siempre es 200 con `reason: "OK" | "QUERY_LIMIT" | "ABUSE_LIMIT" | "GLOBAL_LIMIT" | "LLM_UNAVAILABLE"` y `contact: { email, linkedinUrl, phone }`.
 - **Alternativa descartada**: `503` cuando caen los providers. Es semánticamente correcto, pero el front tendría que leer el cuerpo de un error y separarlo del `503` de under-pressure, y el embudo pasaría a depender del camino de error.
 - **Consecuencia**: el front hace un `switch` sobre `reason`, no sobre el texto ni el status. Agregar un caso nuevo es sumar un valor al enum del schema.
+
+## ADR-024: Versionado automático con semantic-release
+
+- **Contexto**: el flujo es `rama de trabajo → develop → main`. Cada integración a `develop` y cada pase a producción necesita una versión identificable, sin que nadie tenga que acordarse de subirla.
+- **Decisión**: semantic-release en GitHub Actions. `develop` publica prereleases (`vX.Y.Z-beta.N`) y `main` publica estables (`vX.Y.Z`). La versión se deriva de Conventional Commits, validados localmente con commitlint en el hook `commit-msg`. El resultado son tags de git y GitHub Releases. No se commitea nada de vuelta: `package.json` queda en `0.0.0-semantic-release` y no hay `CHANGELOG.md`.
+- **Alternativa descartada**: commitear la versión y el changelog con `@semantic-release/git`. Cada release haría que el bot pushee un commit a `main` y a `develop`, lo que choca con las reglas de protección de ramas y agrega ruido al historial. Release Please también se descartó, porque exige un PR de release intermedio en cada rama.
+- **Consecuencia**: la versión vigente se lee de los tags (`git describe --tags`) o de GitHub Releases, no de `package.json`. Un commit con mal formato no rompe el release, pero el hook lo frena antes. `develop → main` siempre se integra con merge commit, y después de cada release estable se trae `main` a `develop` (back-merge, normalmente un fast-forward). Sin ese paso, `develop` no ve el tag estable y numera mal la próxima beta. Detalle en [GIT-WORKFLOW.md](GIT-WORKFLOW.md).
+
+## ADR-025: ESLint + Prettier con TypeScript 7 vía alias de la API de TS 6
+
+- **Contexto**: TS 7 (port nativo en Go) no expone la API JS del compilador. typescript-eslint la necesita para parsear y para las reglas con información de tipos, y su peer dependency acepta `typescript >=4.8.4 <6.1.0`.
+- **Decisión**: en `package.json`, `typescript` es un alias de `@typescript/typescript6`, el paquete oficial que reexporta la API de TS 6 (y trae el binario `tsc6`). TS 7 se instala como `typescript7` y provee `tsc`, que es lo que usan `typecheck` y `build`. ESLint usa `strictTypeChecked` + `stylisticTypeChecked` con `projectService`, y `eslint-config-prettier` al final para que el formato sea solo de Prettier. lint-staged corre ESLint y Prettier sobre los archivos stageados en el `pre-commit`, y el CI corre `format:check` y `lint` sobre todo el repo.
+- **Alternativa descartada**: Biome u oxlint (nativos, sin depender de la API de TS). Son más rápidos, pero las reglas con información de tipos (`no-floating-promises`, `no-misused-promises`), que son las que más valen en un backend con Fastify y Prisma, siguen siendo más completas en typescript-eslint. También se descartó bajar el proyecto a TS 6.
+- **Consecuencia**: el lint ve los tipos con la semántica de TS 6 y el compilador usa la de TS 7. Como TS 7 es un port 1:1 de 6.0, en la práctica coinciden. Cuando typescript-eslint soporte TS 7, se elimina el alias y `typescript7` vuelve a llamarse `typescript`.
+
+## ADR-026: Env validado con `env-schema` antes de crear la instancia
+
+- **Contexto**: `trustProxy` y el nivel del logger son opciones del **constructor** de Fastify. `@fastify/env` valida el env recién al registrarse como plugin, o sea **después** de `Fastify()`. Con él, esas dos opciones tendrían que leerse de `process.env` sin validar.
+- **Decisión**: `config/env.ts` expone `loadConfig(data?)`, que llama a `env-schema` (la librería que `@fastify/env` envuelve por dentro) antes de crear la instancia. `buildApp()` construye Fastify con valores ya validados y después hace `app.decorate('config', config)`. El schema está tipado como `JSONSchemaType<Env>` de ajv: si el schema y la interfaz `Env` divergen, falla `tsc`. Con `data` (tests) se lee **solo** ese objeto (`env: false`), así el entorno de la shell no se cuela en los tests.
+- **Alternativa descartada**: `@fastify/env` + leer `TRUST_PROXY` y `LOG_LEVEL` de `process.env` a mano. Son dos variables sin validar, y un `TRUST_PROXY=ture` mal escrito pasaría en silencio.
+- **Consecuencia**: `app.config` sigue igual para el resto del código. Las variables opcionales no pueden quedar vacías (`X=`), porque llegan como `""` y fallan el `minLength`: en `.env.example` van comentadas. El ajv de `env-schema` no trae `ajv-formats`, así que no hay `format` en el schema.
+
+## ADR-027: `/health` como ruta propia, no la de under-pressure
+
+- **Contexto**: `@fastify/under-pressure` puede exponer una ruta de estado, pero la declara con JSON Schema. El serializer de `@fastify/type-provider-zod` rechaza todo schema que no sea Zod (`InvalidSchemaError`) y la app no arranca.
+- **Decisión**: under-pressure queda solo como protección (`exposeStatusRoute: false`, 503 si el event loop pasa 1 s de demora) y `GET /health` es el módulo `modules/health` con su schema Zod y `logLevel: 'silent'`.
+- **Alternativa descartada**: registrar under-pressure en un scope encapsulado con los compilers por defecto. Funciona, pero es un caso especial difícil de ver para algo que es una ruta de cuatro líneas.
+- **Consecuencia**: `/health` aparece en `/docs` como cualquier otra ruta. Si más adelante hace falta un chequeo de DB (readiness), se agrega en el mismo módulo.

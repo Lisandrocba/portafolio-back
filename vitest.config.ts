@@ -1,14 +1,11 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
+    globalSetup: ['./test/global-setup.ts'],
     setupFiles: ['./test/setup.ts'],
-    // No modules yet: an empty suite is valid. Remove once the first module ships with tests,
-    // so a broken include glob fails loudly instead of passing silently.
-    passWithNoTests: true,
-
     globals: false, // explicit imports from 'vitest': no ambient globals to type
     clearMocks: true,
     restoreMocks: true,
@@ -25,6 +22,8 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/**/*.types.ts',
         'src/**/index.ts',
+        // TEMPORARY: still notImplemented, it needs the CV modules' types (fase 3).
+        'src/modules/chat/prompt/profile-context.ts',
       ],
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
@@ -37,4 +36,4 @@ export default defineConfig({
       },
     },
   },
-})
+});

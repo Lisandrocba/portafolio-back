@@ -7,7 +7,7 @@ API REST del portfolio de Lisandro Córdoba. Dos propósitos:
 
 El backend es también pieza de portfolio: estructura, documentación y tests tienen que estar a la altura.
 
-**Estado**: fase 0 (documentación). `src/app.ts` todavía exporta una instancia singleton; en fase 1 pasa a `buildApp()`. Ver [docs/ROADMAP.md](docs/ROADMAP.md).
+**Estado**: fases 1 (fundaciones) y 2 (datos) completas. `POST /chat` funciona de punta a punta y guarda en Postgres; como contexto del CV usa todavía una copia fija de SEED-DATA.md (`FALLBACK_CONTEXT` en `system-prompt.ts`) hasta la fase 3. Ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Stack
 
@@ -16,47 +16,53 @@ El backend es también pieza de portfolio: estructura, documentación y tests ti
 - Prisma **7.10.x estable** (no el 8 RC que hoy figura como `latest` en npm) + PostgreSQL en Neon, con `@prisma/adapter-pg`
 - Vitest + `app.inject()` + `MockAgent` de undici para el LLM
 - `@fastify/swagger` + `@fastify/swagger-ui` en `/docs`
-- `@fastify/helmet`, `cors`, `rate-limit`, `under-pressure`, `env`, `sensible`
-- LLM: Groq (principal) → Gemini Flash-Lite (fallback), ambos vía `fetch` nativo, sin SDKs
+- `@fastify/helmet`, `cors`, `rate-limit`, `under-pressure`, `sensible`
+- Env validado con `env-schema` antes de crear la instancia (no `@fastify/env`, ver ADR-026)
+- LLM: Groq (principal) → Gemini Flash-Lite (fallback), ambos por su API compatible con OpenAI con el SDK `openai` (una sola clase, ADR-004)
 - Pino (el de Fastify) con `redact`
 - Gestor de paquetes: **yarn**
 
 ## Comandos
 
-| Comando | Estado |
-|---|---|
-| `yarn dev` (tsx watch) / `yarn build` (tsc) / `yarn start` | existen |
-| `yarn test`, `yarn test:watch`, `yarn test:coverage` | fase 1 |
-| `yarn typecheck` (`tsc --noEmit`) | fase 1 |
-| `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | fase 2 |
+| Comando                                                                                   | Estado  |
+| ----------------------------------------------------------------------------------------- | ------- |
+| `yarn dev` (tsx watch) / `yarn build` (tsc) / `yarn start`                                | existen |
+| `yarn test`, `yarn test:watch`, `yarn test:coverage` (necesitan `yarn test:db`)           | existen |
+| `yarn test:db` (Postgres de test en Docker, puerto 5433)                                  | existe  |
+| `yarn typecheck` (`tsc --noEmit`)                                                         | existe  |
+| `yarn lint`, `yarn lint:fix`, `yarn format`, `yarn format:check`                          | existen |
+| `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | existen |
 
-Antes de dar algo por terminado: `yarn typecheck && yarn test`.
+Antes de dar algo por terminado: `yarn lint && yarn typecheck && yarn test`. Los tests usan el Postgres de `docker-compose.yml` (o el `DATABASE_URL` de `.env.test`); nunca Neon.
+
+`typescript` en `package.json` es un alias de `@typescript/typescript6`: typescript-eslint necesita la API JS de TS 6. El compilador real es TS 7 (paquete `typescript7`, binario `tsc`). No "arreglar" el alias. Ver ADR-025.
 
 ## Estructura (detalle y porqués en [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md))
 
 ```
 src/app.ts            buildApp(): registra plugins y módulos. NO hace listen
 src/server.ts         listen + graceful shutdown
-src/config/env.ts     schema de @fastify/env
+src/config/           env.ts (loadConfig con env-schema), logger.ts (redact)
 src/plugins/          security, swagger, auth, prisma (fastify-plugin)
 src/modules/<feature>/  <feature>.routes|service|repository|schemas|test.ts
-src/lib/              errors, types, prisma
+src/lib/              errors, types, ip-hash, prisma
 src/generated/prisma/ cliente Prisma generado (gitignored)
 prisma/               schema.prisma, migrations/, seed.ts
-test/helpers/         build-app.ts
+test/helpers/         build-app.ts (TEST_ENV), mock-llm.ts (MockAgent)
 ```
 
 ## Convenciones
 
 - Código, identificadores y commits en **inglés**. Docs y textos del bot en **español**.
+- Commits con **Conventional Commits** (`feat:`, `fix:`, `docs:`…): de ahí sale la versión. Ramas `rama de trabajo → develop → main`; ver [docs/GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md).
 - Imports relativos con extensión `.js` (NodeNext). Nada de `any`; preferí `unknown` + parseo con Zod.
 - Archivos por feature: `experience.routes.ts`, `experience.service.ts`, etc. Tests colocados al lado (`experience.test.ts`).
 - Dependencias explícitas: factories `createXRepository(prisma)` → `createXService(repo)`, compuestas en `buildApp()` y pasadas a las rutas por opciones del plugin. Sin contenedor de DI.
 - Schemas Zod **escritos a mano**. Enums importados desde `src/generated/prisma/enums`. Un schema de respuesta **pública** y otro **admin** por recurso: el público es la última barrera contra fugas de campos.
-- Toda variable de entorno se lee desde `app.config` (validada por `@fastify/env`). Nunca `process.env` suelto fuera de `config/` y `server.ts`.
+- Toda variable de entorno se lee desde `app.config` (validada por `loadConfig()` de `config/env.ts`). Nunca `process.env` suelto fuera de `config/` y `server.ts`.
 - Errores de Prisma se traducen a errores de dominio (`lib/errors.ts`) **dentro del repository**.
 - Updates parciales con `PATCH`. Fechas de CV con precisión de mes (día 1).
-- Providers de LLM: usan `fetch` (no SDK) para que `MockAgent` los intercepte en tests. Ningún test le pega a una API real.
+- Providers de LLM: el SDK `openai` usa el `fetch` global, así que `MockAgent` los intercepta en tests. Ningún test le pega a una API real.
 
 ## Reglas que nunca se rompen
 
@@ -87,3 +93,4 @@ Flujo típico de una feature: diseño con `tech-lead` → implementación → te
 - [docs/DECISIONS.md](docs/DECISIONS.md): ADRs
 - [docs/ROADMAP.md](docs/ROADMAP.md): fases y pendientes
 - [docs/SEED-DATA.md](docs/SEED-DATA.md): datos reales del CV para `prisma/seed.ts`
+- [docs/GIT-WORKFLOW.md](docs/GIT-WORKFLOW.md): ramas, Conventional Commits y versionado automático

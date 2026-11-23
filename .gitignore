@@ -5,3 +5,5 @@ dist/
 !.env.example
 .vitest/
 coverage/
+# Prisma client, regenerated with yarn db:generate
+src/generated/

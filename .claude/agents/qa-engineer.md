@@ -50,7 +50,7 @@ Estos tienen que existir sí o sí, son los que pueden romper el producto en pro
 
 ## Cómo escribís los tests
 
-- Al menos un archivo de test por módulo, al lado del código, con nombre *.test.ts. Lo que tiene lógica propia (`quota.service`, cada provider de LLM) lleva su propio archivo al lado (`quota.service.test.ts`, `groq.provider.test.ts`).
+- Al menos un archivo de test por módulo, al lado del código, con nombre *.test.ts. Lo que tiene lógica propia (`quota.service`, cada provider de LLM) lleva su propio archivo al lado (`quota.test.ts`, `providers.test.ts`).
 - Nombres descriptivos de la condición, no del método: "devuelve 401 cuando falta x-admin-key", no "test admin auth".
 - Arrange / Act / Assert visible, sin abstracciones que oculten qué se está probando. Un test que hay que descifrar no sirve de documentación.
 - Sin lógica condicional dentro de un test. Si necesitás un if, son dos tests.

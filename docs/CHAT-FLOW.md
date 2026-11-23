@@ -29,11 +29,11 @@ Todo el diseño apunta a no perder al visitante en el paso del CTA: el corte nun
 }
 ```
 
-| Campo | Regla |
-|---|---|
-| `visitorId` | UUID opcional. Ausente o `null` → el backend genera uno y lo devuelve; el front lo guarda en `localStorage`. Formato inválido → 400 |
+| Campo            | Regla                                                                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `visitorId`      | UUID opcional. Ausente o `null` → el backend genera uno y lo devuelve; el front lo guarda en `localStorage`. Formato inválido → 400    |
 | `conversationId` | UUID opcional. Ausente, `null` o **inexistente** → se crea una conversación nueva en silencio, asociada al `visitorId`. **Nunca 404.** |
-| `message` | string, trim, 1 a `CHAT_MAX_MESSAGE_CHARS` (default 500) |
+| `message`        | string, trim, 1 a `CHAT_MAX_MESSAGE_CHARS` (default 500)                                                                               |
 
 ### Response `200`
 
@@ -53,35 +53,35 @@ Todo el diseño apunta a no perder al visitante en el paso del CTA: el corte nun
 }
 ```
 
-| Campo | Significado |
-|---|---|
-| `visitorId` | Siempre presente. El front lo guarda en `localStorage` |
-| `conversationId` | Siempre presente. El front lo guarda, sea el que mandó o uno nuevo |
-| `reply` | Texto a mostrar (texto plano; el front no lo interpreta como HTML) |
-| `remaining` | Consultas sustanciales restantes hoy, `≥ 0` |
-| `showCta` | Mostrar el CTA debajo de esta respuesta |
-| `reason` | Por qué se respondió así. El front decide la UI con este campo, no con el texto |
-| `contact` | Datos de contacto para mostrar debajo de la respuesta. `phone` es `null` hasta que el visitante deja un lead |
+| Campo            | Significado                                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `visitorId`      | Siempre presente. El front lo guarda en `localStorage`                                                       |
+| `conversationId` | Siempre presente. El front lo guarda, sea el que mandó o uno nuevo                                           |
+| `reply`          | Texto a mostrar (texto plano; el front no lo interpreta como HTML)                                           |
+| `remaining`      | Consultas sustanciales restantes hoy, `≥ 0`                                                                  |
+| `showCta`        | Mostrar el CTA debajo de esta respuesta                                                                      |
+| `reason`         | Por qué se respondió así. El front decide la UI con este campo, no con el texto                              |
+| `contact`        | Datos de contacto para mostrar debajo de la respuesta. `phone` es `null` hasta que el visitante deja un lead |
 
 #### Valores de `reason`
 
-| `reason` | Cuándo | ¿Llamó al LLM? |
-|---|---|---|
-| `OK` | Respuesta normal del LLM | Sí |
-| `QUERY_LIMIT` | El visitante agotó sus `CHAT_QUERY_LIMIT` consultas sustanciales de hoy | No |
-| `ABUSE_LIMIT` | El visitante llegó a `CHAT_HARD_MESSAGE_LIMIT` mensajes hoy | No |
-| `GLOBAL_LIMIT` | Se alcanzó el tope diario global del servidor | No |
-| `LLM_UNAVAILABLE` | Fallaron todos los providers (timeout, 429, 5xx, red) | Lo intentó |
+| `reason`          | Cuándo                                                                  | ¿Llamó al LLM? |
+| ----------------- | ----------------------------------------------------------------------- | -------------- |
+| `OK`              | Respuesta normal del LLM                                                | Sí             |
+| `QUERY_LIMIT`     | El visitante agotó sus `CHAT_QUERY_LIMIT` consultas sustanciales de hoy | No             |
+| `ABUSE_LIMIT`     | El visitante llegó a `CHAT_HARD_MESSAGE_LIMIT` mensajes hoy             | No             |
+| `GLOBAL_LIMIT`    | Se alcanzó el tope diario global del servidor                           | No             |
+| `LLM_UNAVAILABLE` | Fallaron todos los providers (timeout, 429, 5xx, red)                   | Lo intentó     |
 
 `QUERY_LIMIT` es "se te acabaron las consultas de hoy"; `LLM_UNAVAILABLE` es "el servicio no está disponible ahora". Son distintos a propósito: el front muestra mensajes y acciones diferentes (en `LLM_UNAVAILABLE` el visitante puede reintentar más tarde).
 
 ### Errores
 
-| Status | Cuándo | Qué hace el front |
-|---|---|---|
-| 400 | `message` vacío o demasiado largo | Valida antes de mandar; si igual llega, muestra el error inline |
-| 429 | Rate limit por IP | "Estás escribiendo muy rápido", reintentar en unos segundos |
-| 503 | under-pressure (servidor saturado) | Mensaje de error + links de contacto directos |
+| Status | Cuándo                             | Qué hace el front                                               |
+| ------ | ---------------------------------- | --------------------------------------------------------------- |
+| 400    | `message` vacío o demasiado largo  | Valida antes de mandar; si igual llega, muestra el error inline |
+| 429    | Rate limit por IP                  | "Estás escribiendo muy rápido", reintentar en unos segundos     |
+| 503    | under-pressure (servidor saturado) | Mensaje de error + links de contacto directos                   |
 
 **Que fallen todos los providers de LLM no es un error HTTP**: devuelve 200 con respuesta fija, `reason: "LLM_UNAVAILABLE"`, `contact` y `showCta: true` (ver "Degradación").
 
@@ -142,7 +142,7 @@ Todo el diseño apunta a no perder al visitante en el paso del CTA: el corte nun
 1. **Solo cuentan las consultas sustanciales.** Saludos, agradecimientos, "ok", "jaja" y mensajes triviales no descuentan.
 2. **Quién decide si es sustancial: el mismo LLM**, en la misma llamada, con salida JSON. No hay llamada extra ni heurística aparte. El criterio está escrito en el system prompt: es sustancial toda pregunta o pedido sobre el perfil profesional que requiera información del CV para responder.
 3. **El contador es derivado** (`count` sobre `Message`) y **por visitante y por día**: mensajes USER sustanciales de las conversaciones con ese `visitorId`, creados desde las 00:00 de `America/Argentina/Cordoba`. No existe campo contador ni se resetea nada: al cambiar el día, el `count` deja afuera los mensajes de ayer.
-4. **La consulta que agota el límite se responde completa.** El corte se evalúa *antes* de llamar al LLM con el conteo previo: si `used = LIMIT - 1`, la consulta pasa, se responde y sale con `remaining: 0, showCta: true`. Recién la siguiente recibe la respuesta fija.
+4. **La consulta que agota el límite se responde completa.** El corte se evalúa _antes_ de llamar al LLM con el conteo previo: si `used = LIMIT - 1`, la consulta pasa, se responde y sale con `remaining: 0, showCta: true`. Recién la siguiente recibe la respuesta fija.
 5. **`recruiterIntent` es pegajoso**: una vez detectado para ese visitante, `showCta` queda `true` hasta que se capture el lead. Así el CTA no aparece y desaparece.
 6. **Con lead capturado, `showCta` es siempre `false`.** Si sigue escribiendo y está en el tope, recibe la respuesta fija con otro texto: "Ya tengo tus datos, Lisandro te va a escribir".
 7. `CHAT_QUERY_LIMIT` es env var (default 5, rango esperado 4–6) para ajustarlo con datos reales sin redeploy de código.
@@ -190,17 +190,17 @@ stateDiagram-v2
     LeadSent --> Chatting: puede seguir (respuesta fija si está en tope)
 ```
 
-| Estado | UI |
-|---|---|
-| `Idle` | Chat cerrado o vacío, con 2–3 preguntas sugeridas |
-| `Chatting` | Input habilitado. Opcional: indicador sutil de consultas restantes |
-| `Sending` | Input deshabilitado + "escribiendo…" |
-| `CtaVisible` | Respuesta + CTA debajo. El input **sigue habilitado** (intención de reclutador detectada antes del tope) |
-| `LimitReached` | Respuesta completa + CTA debajo. Input reemplazado por el CTA o con placeholder "Dejame tus datos para seguir" |
-| `Unavailable` | Texto fijo + `contact` (mail y LinkedIn) + CTA. Input habilitado: el problema es del servicio, no del visitante |
-| `LeadForm` | Mini formulario dentro del chat: nombre, email, empresa (opcional), qué busca |
-| `LeadSent` | Confirmación + `contact` de la respuesta de `POST /leads` (mail, LinkedIn y teléfono) |
-| `Error` | Mensaje amable + mail y LinkedIn directos |
+| Estado         | UI                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `Idle`         | Chat cerrado o vacío, con 2–3 preguntas sugeridas                                                               |
+| `Chatting`     | Input habilitado. Opcional: indicador sutil de consultas restantes                                              |
+| `Sending`      | Input deshabilitado + "escribiendo…"                                                                            |
+| `CtaVisible`   | Respuesta + CTA debajo. El input **sigue habilitado** (intención de reclutador detectada antes del tope)        |
+| `LimitReached` | Respuesta completa + CTA debajo. Input reemplazado por el CTA o con placeholder "Dejame tus datos para seguir"  |
+| `Unavailable`  | Texto fijo + `contact` (mail y LinkedIn) + CTA. Input habilitado: el problema es del servicio, no del visitante |
+| `LeadForm`     | Mini formulario dentro del chat: nombre, email, empresa (opcional), qué busca                                   |
+| `LeadSent`     | Confirmación + `contact` de la respuesta de `POST /leads` (mail, LinkedIn y teléfono)                           |
+| `Error`        | Mensaje amable + mail y LinkedIn directos                                                                       |
 
 El front persiste en `localStorage` solo el `visitorId`. En `sessionStorage`: `conversationId`, los mensajes renderizados y la última respuesta (`remaining`, `showCta`, `reason`, `contact`). Recargar la página restaura la vista sin pedirle nada al backend.
 
