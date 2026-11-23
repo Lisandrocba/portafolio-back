@@ -7,7 +7,7 @@ API REST del portfolio de Lisandro Córdoba. Dos propósitos:
 
 El backend es también pieza de portfolio: estructura, documentación y tests tienen que estar a la altura.
 
-**Estado**: fase 0 (documentación). `src/app.ts` todavía exporta una instancia singleton; en fase 1 pasa a `buildApp()`. Ver [docs/ROADMAP.md](docs/ROADMAP.md).
+**Estado**: fase 1 (fundaciones) completa. El módulo `chat` existe como esqueleto (contratos completos, lógica con `notImplemented`), sin registrar en `buildApp()`. Ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Stack
 
@@ -16,7 +16,8 @@ El backend es también pieza de portfolio: estructura, documentación y tests ti
 - Prisma **7.10.x estable** (no el 8 RC que hoy figura como `latest` en npm) + PostgreSQL en Neon, con `@prisma/adapter-pg`
 - Vitest + `app.inject()` + `MockAgent` de undici para el LLM
 - `@fastify/swagger` + `@fastify/swagger-ui` en `/docs`
-- `@fastify/helmet`, `cors`, `rate-limit`, `under-pressure`, `env`, `sensible`
+- `@fastify/helmet`, `cors`, `rate-limit`, `under-pressure`, `sensible`
+- Env validado con `env-schema` antes de crear la instancia (no `@fastify/env`, ver ADR-026)
 - LLM: Groq (principal) → Gemini Flash-Lite (fallback), ambos vía `fetch` nativo, sin SDKs
 - Pino (el de Fastify) con `redact`
 - Gestor de paquetes: **yarn**
@@ -26,7 +27,7 @@ El backend es también pieza de portfolio: estructura, documentación y tests ti
 | Comando                                                                                   | Estado  |
 | ----------------------------------------------------------------------------------------- | ------- |
 | `yarn dev` (tsx watch) / `yarn build` (tsc) / `yarn start`                                | existen |
-| `yarn test`, `yarn test:watch`, `yarn test:coverage`                                      | fase 1  |
+| `yarn test`, `yarn test:watch`, `yarn test:coverage`                                      | existen |
 | `yarn typecheck` (`tsc --noEmit`)                                                         | existe  |
 | `yarn lint`, `yarn lint:fix`, `yarn format`, `yarn format:check`                          | existen |
 | `yarn db:generate`, `yarn db:migrate`, `yarn db:deploy`, `yarn db:seed`, `yarn db:studio` | fase 2  |
@@ -40,13 +41,13 @@ Antes de dar algo por terminado: `yarn lint && yarn typecheck && yarn test`.
 ```
 src/app.ts            buildApp(): registra plugins y módulos. NO hace listen
 src/server.ts         listen + graceful shutdown
-src/config/env.ts     schema de @fastify/env
+src/config/           env.ts (loadConfig con env-schema), logger.ts (redact)
 src/plugins/          security, swagger, auth, prisma (fastify-plugin)
 src/modules/<feature>/  <feature>.routes|service|repository|schemas|test.ts
-src/lib/              errors, types, prisma
+src/lib/              errors, types, ip-hash, prisma
 src/generated/prisma/ cliente Prisma generado (gitignored)
 prisma/               schema.prisma, migrations/, seed.ts
-test/helpers/         build-app.ts
+test/helpers/         build-app.ts (TEST_ENV), mock-llm.ts (MockAgent)
 ```
 
 ## Convenciones
@@ -57,7 +58,7 @@ test/helpers/         build-app.ts
 - Archivos por feature: `experience.routes.ts`, `experience.service.ts`, etc. Tests colocados al lado (`experience.test.ts`).
 - Dependencias explícitas: factories `createXRepository(prisma)` → `createXService(repo)`, compuestas en `buildApp()` y pasadas a las rutas por opciones del plugin. Sin contenedor de DI.
 - Schemas Zod **escritos a mano**. Enums importados desde `src/generated/prisma/enums`. Un schema de respuesta **pública** y otro **admin** por recurso: el público es la última barrera contra fugas de campos.
-- Toda variable de entorno se lee desde `app.config` (validada por `@fastify/env`). Nunca `process.env` suelto fuera de `config/` y `server.ts`.
+- Toda variable de entorno se lee desde `app.config` (validada por `loadConfig()` de `config/env.ts`). Nunca `process.env` suelto fuera de `config/` y `server.ts`.
 - Errores de Prisma se traducen a errores de dominio (`lib/errors.ts`) **dentro del repository**.
 - Updates parciales con `PATCH`. Fechas de CV con precisión de mes (día 1).
 - Providers de LLM: usan `fetch` (no SDK) para que `MockAgent` los intercepte en tests. Ningún test le pega a una API real.

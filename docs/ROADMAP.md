@@ -8,15 +8,15 @@ CLAUDE.md + `docs/`. Sin código de aplicación.
 
 ## Fase 1: Fundaciones
 
-- [ ] Dependencias: `@fastify/type-provider-zod`, `zod`, `@fastify/{env,helmet,cors,rate-limit,under-pressure,sensible,swagger,swagger-ui}`, `fastify-plugin`, `vitest`, `undici`.
-- [ ] `tsconfig`: agregar `types: ["node"]`, quitar `jsx`; separar `tsconfig.json` (typecheck de `src/`, `test/`, `prisma/`) de `tsconfig.build.json` (emite solo `src/`).
+- [x] Dependencias: `@fastify/type-provider-zod`, `zod`, `env-schema` (ADR-026), `@fastify/{helmet,cors,rate-limit,under-pressure,sensible,swagger,swagger-ui}`, `fastify-plugin`, `vitest`, `undici@7` (misma major que el undici que trae Node 24, para que `MockAgent` intercepte el `fetch` nativo).
+- [x] `tsconfig`: agregar `types: ["node"]`, quitar `jsx`; separar `tsconfig.json` (typecheck de `src/`, `test/`, `prisma/`) de `tsconfig.build.json` (emite solo `src/`).
 - [x] Verificar que TypeScript 7 convive con Vitest y el resto del tooling. Vitest, tsx y commitlint andan con TS 7; typescript-eslint necesita la API de TS 6 (resuelto con alias, ADR-025).
-- [ ] Refactor `app.ts` → `buildApp(opts)`; `server.ts` con graceful shutdown (SIGINT/SIGTERM).
-- [ ] `config/env.ts` con todas las variables de [API.md](API.md#variables-de-entorno) + `.env.example`.
-- [ ] `plugins/security.ts`, `plugins/swagger.ts` (`/docs`), error handler en `lib/errors.ts`.
-- [ ] Logger Pino con `redact`.
-- [ ] Vitest + `test/helpers/build-app.ts`; test de `/health` y de `/docs/json`.
-- [ ] Scripts `test`, `test:watch`, `test:coverage`, `typecheck`.
+- [x] Refactor `app.ts` → `buildApp(opts)`; `server.ts` con graceful shutdown (SIGINT/SIGTERM).
+- [x] `config/env.ts` con todas las variables de [API.md](API.md#variables-de-entorno) + `.env.example`.
+- [x] `plugins/security.ts`, `plugins/swagger.ts` (`/docs`), error handler en `lib/errors.ts`. `/health` como módulo propio (ADR-027).
+- [x] Logger Pino con `redact` y serializer de `req` sin IP.
+- [x] Vitest + `test/helpers/build-app.ts`; test de `/health` y de `/docs/json`. Además `test/helpers/mock-llm.ts` (MockAgent) con su propio test.
+- [x] Scripts `test`, `test:watch`, `test:coverage`, `typecheck`.
 
 ## Fase 2: Datos
 
@@ -38,6 +38,8 @@ CLAUDE.md + `docs/`. Sin código de aplicación.
 - [ ] Tests por módulo: público filtra `published`, schema público no filtra campos internos, admin ve todo, 404/409.
 
 ## Fase 4: Chat
+
+El esqueleto ya existe en `src/modules/chat/`: los contratos (`llm.types.ts`, `llm.errors.ts`, `chat.schemas.ts`, `chat.repository.ts` como interfaz, `chat.routes.ts`) están completos. La lógica tira `notImplemented()` con los pasos escritos en cada archivo, y los tests pendientes figuran como `it.todo`. `src/modules/chat/**` está excluido de coverage **temporalmente**: sacar la exclusión de `vitest.config.ts` al implementar la primera pieza.
 
 - [ ] `providers/llm.types.ts`, `groq.provider.ts`, `gemini.provider.ts` (JSON mode, timeout, mapeo de tokens).
 - [ ] Tests de providers y failover con `MockAgent` (Groq 429 → Gemini; ambos caen → degradación).
