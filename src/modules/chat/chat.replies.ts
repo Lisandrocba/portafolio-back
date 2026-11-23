@@ -29,6 +29,16 @@ export const FIXED_REPLIES: Record<FixedReason, Record<ReplyLanguage, string>> =
   },
 };
 
+// Simple heuristic (CHAT-FLOW, "Degradación"): English only if it looks English and has
+// nothing that looks Spanish. When in doubt, Spanish.
+const ENGLISH_HINTS =
+  /\b(the|what|which|how|does|do|is|are|has|have|his|he|you|can|hello|hi|thanks|experience)\b/i;
+const SPANISH_HINTS = /[¿¡ñáéíóú]|\b(qué|que|el|la|los|las|de|tiene|es|hola|gracias|sabe)\b/i;
+
+export function detectLanguage(message: string): ReplyLanguage {
+  return ENGLISH_HINTS.test(message) && !SPANISH_HINTS.test(message) ? 'en' : 'es';
+}
+
 /** At the limit but with a lead already captured: no CTA, different text (CHAT-FLOW, rule 6). */
 export const LEAD_CAPTURED_REPLY: Record<ReplyLanguage, string> = {
   es: 'Ya tengo tus datos: Lisandro te va a escribir.',

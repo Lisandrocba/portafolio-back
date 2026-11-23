@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { GROQ_CHAT_PATH, GROQ_ORIGIN } from '../../src/modules/chat/providers/groq.provider.js';
-import { groqBody, installMockLlm } from './mock-llm.js';
+import { completionBody, GROQ_ENDPOINT, installMockLlm } from './mock-llm.js';
 
 // Guards the test infrastructure itself: if MockAgent stopped intercepting native fetch
 // (e.g. an undici major that doesn't match Node's), every provider test would be meaningless.
@@ -16,12 +15,14 @@ describe('installMockLlm', () => {
   });
 
   it('intercepts native fetch', async () => {
-    llm.groq().reply(200, groqBody('{"ok":true}'));
+    llm.groq().reply(200, completionBody('{"ok":true}'));
 
-    const response = await fetch(`${GROQ_ORIGIN}${GROQ_CHAT_PATH}`, { method: 'POST' });
+    const response = await fetch(`${GROQ_ENDPOINT.origin}${GROQ_ENDPOINT.path}`, {
+      method: 'POST',
+    });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual(groqBody('{"ok":true}'));
+    expect(await response.json()).toEqual(completionBody('{"ok":true}'));
     llm.assertAllCalled();
   });
 

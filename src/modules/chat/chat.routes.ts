@@ -10,12 +10,7 @@ export interface ChatRoutesOptions {
 /** Stricter than the global limit: each request may cost LLM quota (docs/API.md). */
 const CHAT_RATE_LIMIT = { max: 10, timeWindow: '1 minute' } as const;
 
-/**
- * POST /chat. Thin on purpose: validate → service → serialize. All logic lives in chat.service.
- *
- * TODO(fase 4): register it in buildApp() once the service is implemented:
- *   await app.register(chatRoutes, { service: chatService, maxMessageChars: config.CHAT_MAX_MESSAGE_CHARS });
- */
+/** POST /chat. Thin on purpose: validate → service → serialize. All logic lives in chat.service. */
 export const chatRoutes: FastifyPluginAsyncZod<ChatRoutesOptions> = async (app, opts) => {
   app.post(
     '/chat',

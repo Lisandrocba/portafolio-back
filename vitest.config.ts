@@ -21,9 +21,8 @@ export default defineConfig({
         'src/**/*.d.ts',
         'src/**/*.types.ts',
         'src/**/index.ts',
-        // TEMPORARY: chat is a skeleton (notImplemented) not wired into buildApp yet.
-        // Remove this line as soon as the first chat piece is implemented (fase 4).
-        'src/modules/chat/**',
+        // TEMPORARY: still notImplemented, it needs the CV modules' types (fase 3).
+        'src/modules/chat/prompt/profile-context.ts',
       ],
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
