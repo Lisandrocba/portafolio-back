@@ -1,10 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import type { ChatRepository, HistoryMessage, NewConversation } from './chat.repository.js';
+import type {
+  ChatRepository,
+  HistoryMessage,
+  NewConversation,
+} from '../../src/modules/chat/chat.repository.js';
 
 /**
- * ChatRepository kept in memory: lets POST /chat work before the database exists (fase 2).
- * Everything is lost on restart, so the daily quota resets too. Once the Prisma repository
- * exists, buildApp() uses that one and this stays as the fake repo for unit tests.
+ * ChatRepository kept in memory: the fake repo for chat.service unit tests, which need cases
+ * the HTTP API can't create yet (a visitor with a lead). The app uses createChatRepository.
  */
 
 interface StoredConversation extends NewConversation {

@@ -39,7 +39,6 @@ src/
       chat.schemas.ts       request/response de POST /chat, ChatReason, LlmOutputSchema
       chat.replies.ts       respuestas fijas sin LLM (es/en), por reason
       quota.service.ts      tope por visitante y día (derivado) + tope diario global (memoria)
-      chat.memory-repository.ts  ChatRepository en memoria: lo usa buildApp() hasta Prisma (fase 2) y los tests como fake
       chat.test.ts
       quota.test.ts
       prompt/
@@ -69,10 +68,14 @@ prisma/
   migrations/
   seed.ts
 prisma.config.ts            config de Prisma 7 (URL directa para migraciones)
+docker-compose.yml          Postgres de test (yarn test:db), puerto 5433, datos en tmpfs
 test/
+  global-setup.ts           una vez por corrida: prisma migrate deploy contra la DB de test
   setup.ts                  carga .env.test y se niega a correr contra una DB que no sea de test
   app.test.ts               env, /docs/json, forma de errores, headers de seguridad, CORS
-  helpers/build-app.ts      buildTestApp(overrides): buildApp() con TEST_ENV (+ limpieza de DB en fase 2)
+  helpers/build-app.ts      buildTestApp(overrides): buildApp() con TEST_ENV
+  helpers/database.ts       TEST_DATABASE_URL + resetDatabase(prisma): TRUNCATE de todas las tablas
+  helpers/memory-chat-repository.ts  ChatRepository en memoria: fake para los tests de chat.service
   helpers/mock-llm.ts       installMockLlm(): MockAgent global + interceptores de Groq/Gemini
 ```
 

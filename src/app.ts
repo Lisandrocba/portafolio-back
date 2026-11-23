@@ -9,12 +9,13 @@ import { buildLoggerOptions } from './config/logger.js';
 import { errorHandler } from './lib/errors.js';
 import { createIpHasher } from './lib/ip-hash.js';
 import type { App } from './lib/types.js';
-import { createInMemoryChatRepository } from './modules/chat/chat.memory-repository.js';
+import { createChatRepository } from './modules/chat/chat.repository.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
 import { createChatService } from './modules/chat/chat.service.js';
 import { createLlmProviders } from './modules/chat/providers/openai-compatible.provider.js';
 import { createQuotaService } from './modules/chat/quota.service.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import prismaPlugin from './plugins/prisma.js';
 import securityPlugin from './plugins/security.js';
 import swaggerPlugin from './plugins/swagger.js';
 
@@ -45,7 +46,8 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
   // 3. Cross-cutting plugins. Swagger goes before any route so it can see them.
   await app.register(securityPlugin);
   await app.register(swaggerPlugin);
-  // TODO(fase 2): plugins/prisma.ts · TODO(fase 3): plugins/auth.ts
+  await app.register(prismaPlugin);
+  // TODO(fase 3): plugins/auth.ts
 
   // 4. Single error shape for the whole API.
   app.setErrorHandler(errorHandler);
@@ -53,8 +55,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
   // 5. Composition: repositories → services → routes, one register per module.
   await app.register(healthRoutes);
 
-  // TODO(fase 2): createChatRepository(prisma) instead of the in-memory one.
-  const chatRepo = createInMemoryChatRepository();
+  const chatRepo = createChatRepository(app.prisma);
   const chatService = createChatService({
     repo: chatRepo,
     quota: createQuotaService({

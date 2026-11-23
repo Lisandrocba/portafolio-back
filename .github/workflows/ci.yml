@@ -13,12 +13,31 @@ concurrency:
 
 env:
   HUSKY: 0 # git hooks are for local commits, not CI installs
+  # The Postgres service below (same URL as docker-compose.yml). Also needed by `yarn install`:
+  # its postinstall runs `prisma generate`, and prisma.config.ts requires DIRECT_DATABASE_URL.
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5433/portfolio_test
+  DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/portfolio_test
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # Test database: the tests run the migrations on it (test/global-setup.ts).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: portfolio_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d portfolio_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

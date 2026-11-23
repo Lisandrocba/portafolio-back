@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildTestApp } from '../../../test/helpers/build-app.js';
+import { resetDatabase } from '../../../test/helpers/database.js';
 import { completionBody, installMockLlm, llmJson } from '../../../test/helpers/mock-llm.js';
 import type { App } from '../../lib/types.js';
-import { createInMemoryChatRepository } from './chat.memory-repository.js';
+import { createInMemoryChatRepository } from '../../../test/helpers/memory-chat-repository.js';
 import { FIXED_REPLIES, LEAD_CAPTURED_REPLY } from './chat.replies.js';
 import type { ChatRepository } from './chat.repository.js';
 import type { ChatResponse } from './chat.schemas.js';
@@ -12,8 +13,9 @@ import { LlmProviderError } from './providers/llm.errors.js';
 import type { LlmProvider, LlmRequest } from './providers/llm.types.js';
 import { createQuotaService } from './quota.service.js';
 
-// POST /chat end to end with app.inject() + MockAgent for the LLM (test/helpers/mock-llm.ts).
-// The funnel cases that need a lead (not creatable over HTTP until fase 5) test the service.
+// POST /chat end to end: app.inject() + the test database + MockAgent for the LLM.
+// The funnel cases that need a lead (not creatable over HTTP until fase 5) test the service
+// with the in-memory repository.
 
 const VISITOR_ID = '9b2d4f7a-1c3e-4e5f-8a6b-7c8d9e0f1a2b';
 
@@ -24,6 +26,7 @@ describe('POST /chat', () => {
   beforeEach(async () => {
     llm = installMockLlm();
     app = await buildTestApp();
+    await resetDatabase(app.prisma);
   });
 
   afterEach(async () => {
