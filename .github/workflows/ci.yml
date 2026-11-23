@@ -13,8 +13,8 @@ concurrency:
 
 env:
   HUSKY: 0 # git hooks are for local commits, not CI installs
-  # The Postgres service below (same URL as docker-compose.yml). Also needed by `yarn install`:
-  # its postinstall runs `prisma generate`, and prisma.config.ts requires DIRECT_DATABASE_URL.
+  # The Postgres service of the verify job (same URL as docker-compose.yml): the tests run
+  # the migrations on it. `yarn install` doesn't need them (prisma generate works without a URL).
   DATABASE_URL: postgresql://postgres:postgres@localhost:5433/portfolio_test
   DIRECT_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/portfolio_test
 
