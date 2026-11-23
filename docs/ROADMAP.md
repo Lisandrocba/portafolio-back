@@ -39,13 +39,15 @@ CLAUDE.md + `docs/`. Sin código de aplicación.
 
 ## Fase 4: Chat
 
-El esqueleto ya existe en `src/modules/chat/`: los contratos (`llm.types.ts`, `llm.errors.ts`, `chat.schemas.ts`, `chat.repository.ts` como interfaz, `chat.routes.ts`) están completos. La lógica tira `notImplemented()` con los pasos escritos en cada archivo, y los tests pendientes figuran como `it.todo`. `src/modules/chat/**` está excluido de coverage **temporalmente**: sacar la exclusión de `vitest.config.ts` al implementar la primera pieza.
+Adelantada a las fases 2 y 3: `POST /chat` funciona con un repository en memoria (`chat.memory-repository.ts`) y con una copia fija del CV como contexto (`FALLBACK_CONTEXT` en `system-prompt.ts`). `buildApp()` tiene `TODO(fase 2)` y `TODO(fase 3)` donde hay que enchufar Prisma y los services del CV.
 
-- [ ] `providers/llm.types.ts`, `groq.provider.ts`, `gemini.provider.ts` (JSON mode, timeout, mapeo de tokens).
-- [ ] Tests de providers y failover con `MockAgent` (Groq 429 → Gemini; ambos caen → degradación).
-- [ ] `prompt/system-prompt.ts` + `prompt/profile-context.ts` (experiencias paralelas marcadas, `clientPublic` respetado).
-- [ ] `quota.service.ts` (derivado por `visitorId` y día + antiabuso + global diario) con tests unitarios de los bordes (`LIMIT - 1`, `LIMIT`, cambio de día en Córdoba, otro `visitorId`, lead capturado, `recruiterIntent` pegajoso).
-- [ ] `chat.service.ts` + `POST /chat` (`visitorId`, `reason`, `contact`) + rate limit específico.
+- [x] `providers/openai-compatible.provider.ts`: una clase para Groq y Gemini (JSON mode, timeout, mapeo de errores y tokens).
+- [x] Tests de providers y failover con `MockAgent` (Groq 429 → Gemini; ambos caen → degradación).
+- [x] `prompt/system-prompt.ts`.
+- [ ] `prompt/profile-context.ts` (experiencias paralelas marcadas, `clientPublic` respetado). Necesita los tipos públicos de la fase 3; está excluido de coverage hasta entonces.
+- [x] `quota.service.ts` (derivado por `visitorId` y día + antiabuso + global diario) con tests unitarios de los bordes (`LIMIT - 1`, `LIMIT`, cambio de día en Córdoba, otro `visitorId`, lead capturado, `recruiterIntent` pegajoso).
+- [x] `chat.service.ts` + `POST /chat` (`visitorId`, `reason`, `contact`) + rate limit específico.
+- [ ] Reemplazar el repository en memoria por `createChatRepository(prisma)` (fase 2) y `loadProfileContext` / `getContact` por los services del CV (fase 3). Ahí se borra `FALLBACK_CONTEXT`.
 - [ ] Admin: `GET /admin/conversations`, `GET /admin/conversations/:id`.
 - [ ] Evaluación manual del prompt: batería de preguntas (teléfono, salario, inglés, tecnología inexistente, intento de jailbreak, pregunta en inglés, "¿dónde trabaja ahora?").
 
@@ -84,7 +86,7 @@ El esqueleto ya existe en `src/modules/chat/`: los contratos (`llm.types.ts`, `l
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | **Hosting del Fastify**          | Requisitos: proceso long-running (no serverless puro, por el tope en memoria), una instancia, HTTPS, env vars. Si el free tier duerme la instancia, se suma cold start y se reinicia el tope global (aceptable). Candidatos a evaluar: Render, Railway, Fly.io, Koyeb. | Fase 6                    |
 | **Proveedor de mail para leads** | Necesita API HTTP y free tier suficiente para pocos mails por día. Ojo: el destino es Hotmail/Outlook, que es estricto con la entregabilidad (dominio verificado, SPF/DKIM). Candidatos a evaluar: Resend, Brevo, Postmark, SMTP de Gmail.                             | Fase 5                    |
-| **Modelos concretos**            | ID exacto del modelo de Groq y de Gemini Flash-Lite (`GROQ_MODEL`, `GEMINI_MODEL`); confirmar que ambos soportan JSON mode.                                                                                                                                            | Fase 4                    |
+| **Modelos concretos**            | Groq: `openai/gpt-oss-120b`, probado con JSON mode (nov. 2026; `llama-3.3-70b-versatile` ya no existe en Groq). Free tier: 1000 requests/día y 8000 tokens/min. Falta el ID de Gemini Flash-Lite y probar JSON mode en su endpoint compatible con OpenAI.              | Fase 4                    |
 | **URL del portfolio**            | Falta la URL de GitHub Pages: `Profile.portfolioUrl` y `CORS_ORIGIN`.                                                                                                                                                                                                  | Fase 2 (seed) / Fase 6    |
 | **DB de test**                   | Branch de Neon dedicado o Postgres local en Docker. Recomendación: Docker local para tests (rápido, offline, desechable) y Neon solo para dev/prod.                                                                                                                    | Fase 2                    |
 | **Retención de conversaciones**  | Purgar conversaciones sin lead después de N días (¿90?). Las que tienen lead no se borran (`Restrict`).                                                                                                                                                                | Fase 8                    |

@@ -39,6 +39,7 @@ src/
       chat.schemas.ts       request/response de POST /chat, ChatReason, LlmOutputSchema
       chat.replies.ts       respuestas fijas sin LLM (es/en), por reason
       quota.service.ts      tope por visitante y día (derivado) + tope diario global (memoria)
+      chat.memory-repository.ts  ChatRepository en memoria: lo usa buildApp() hasta Prisma (fase 2) y los tests como fake
       chat.test.ts
       quota.test.ts
       prompt/
@@ -48,8 +49,7 @@ src/
       providers/
         llm.types.ts        interfaz LlmProvider + tipos de request/response
         llm.errors.ts       LlmProviderError con kind (timeout, rate_limit, server…)
-        groq.provider.ts
-        gemini.provider.ts
+        openai-compatible.provider.ts  una clase para Groq y Gemini (cambia la baseURL) + createLlmProviders(config)
         providers.test.ts
     leads/
       leads.routes.ts
@@ -88,7 +88,7 @@ test/
 | Repositories aíslan Prisma                         | Los services se testean con repos falsos. Cambiar de ORM o de query toca un archivo. Los errores `P2025`/`P2002` se traducen a dominio ahí mismo.                                |
 | Factories en vez de clases singleton               | Las dependencias quedan visibles en la firma. `chat.service` recibe los services del CV por parámetro, sin importarlos.                                                          |
 | Schemas de respuesta pública separados             | El serializer de Zod descarta las claves que no están en el schema. Aunque el repository devuelva `published`, `createdAt` o un campo nuevo, el schema público no lo deja salir. |
-| Providers con `fetch` nativo                       | Sin SDKs: menos dependencias, y `MockAgent` de undici intercepta todo. Además Groq es compatible con OpenAI y es un POST simple.                                                 |
+| Un provider compatible con OpenAI                  | Groq y Gemini hablan el mismo formato: una clase con el SDK `openai` y dos `baseURL`. El SDK usa el `fetch` global, así que `MockAgent` de undici lo intercepta igual (ADR-004). |
 | `profile-context.ts` lee services, no repositories | Reusa los mismos filtros (`published`, `clientPublic`, orden) que la API pública. Lo que ve el bot = lo que ve el portfolio.                                                     |
 | `quota.service.ts` separado                        | Concentra la lógica de negocio del embudo (límite, tope global, `showCta`). Se testea sin LLM ni HTTP.                                                                           |
 | `src/generated/prisma`                             | Prisma 7 exige `output` explícito y ya no genera en `node_modules`. De ahí se importan cliente y enums.                                                                          |

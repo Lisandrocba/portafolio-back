@@ -28,9 +28,9 @@ Formato: **Contexto** / **Decisión** / **Alternativa descartada** / **Consecuen
 ## ADR-004: Interfaz común de LLM y failover por loop
 
 - **Contexto**: se usa la cuota gratuita de Groq, que puede agotarse o caerse. Hay un fallback (Gemini Flash-Lite).
-- **Decisión**: `llm.types.ts` define `LlmProvider { name; complete(req): Promise<LlmResult> }`. `chat.service` recibe un array ordenado y lo recorre hasta que uno responde. Implementación con `fetch` nativo, sin SDKs. La key de Gemini va por header (`x-goog-api-key`), no por query string.
-- **Alternativa descartada**: SDKs oficiales (`openai`, `@google/genai`) o librerías de orquestación (LangChain, Vercel AI SDK). Más dependencias para dos POST, y complican interceptar con `MockAgent`.
-- **Consecuencia**: agregar un provider = un archivo + sumarlo al array. Tests de failover deterministas con `MockAgent`. Cada provider mapea su formato (JSON mode, conteo de tokens) a `LlmResult`.
+- **Decisión**: `llm.types.ts` define `LlmProvider { name; complete(req): Promise<LlmResult> }`. `chat.service` recibe un array ordenado y lo recorre hasta que uno responde. Groq y Gemini exponen la API de chat completions de OpenAI, así que hay **una sola clase**, `OpenAiCompatibleProvider` (SDK `openai`), y cada provider es una instancia con su `baseURL`. El SDK va con `maxRetries: 0` (el failover es del service) y sus errores se traducen a `LlmProviderError`. La key de Gemini va por header (`Authorization: Bearer`), nunca por query string.
+- **Alternativa descartada**: (a) un archivo por provider con `fetch` nativo: más código repetido para dos APIs que hablan el mismo formato; (b) SDKs propios de cada proveedor (`@google/genai`) o librerías de orquestación (LangChain, Vercel AI SDK): más dependencias y formatos distintos para el mismo POST.
+- **Consecuencia**: agregar un provider compatible con OpenAI = una instancia más en `createLlmProviders()`. El SDK usa el `fetch` global, así que `MockAgent` lo intercepta y los tests de failover siguen siendo deterministas (el mock tiene que responder con `content-type: application/json`; lo hace `test/helpers/mock-llm.ts`). Si un provider futuro no es compatible con OpenAI, implementa `LlmProvider` en su propio archivo.
 
 ## ADR-005: Contexto del bot leído de los services en cada request
 

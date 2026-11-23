@@ -48,7 +48,7 @@ Si el código está bien, decilo y seguí. No inventes observaciones para parece
 
 ## Contexto del stack
 
-Fastify 5, TypeScript 7 (ESM, `module: NodeNext`), Zod 4 con @fastify/type-provider-zod, Prisma 7.10 estable (no el 8 RC) con PostgreSQL en Neon y `@prisma/adapter-pg`, Vitest, yarn, organización por features (vertical slices). Los proveedores de LLM (Groq principal, Gemini Flash-Lite de fallback) se llaman con `fetch` nativo, sin SDK.
+Fastify 5, TypeScript 7 (ESM, `module: NodeNext`), Zod 4 con @fastify/type-provider-zod, Prisma 7.10 estable (no el 8 RC) con PostgreSQL en Neon y `@prisma/adapter-pg`, Vitest, yarn, organización por features (vertical slices). Los proveedores de LLM (Groq principal, Gemini Flash-Lite de fallback) se llaman por su API compatible con OpenAI, con una sola clase sobre el SDK `openai` (ADR-004).
 
 Antes de opinar sobre algo del dominio, leé CLAUDE.md (en especial "Reglas que nunca se rompen") y el doc de docs/ que corresponda: CHAT-FLOW.md para el embudo y el contador, DATA-MODEL.md para el modelo, API.md para los contratos.
 

@@ -7,7 +7,13 @@ import Fastify from 'fastify';
 import { loadConfig } from './config/env.js';
 import { buildLoggerOptions } from './config/logger.js';
 import { errorHandler } from './lib/errors.js';
+import { createIpHasher } from './lib/ip-hash.js';
 import type { App } from './lib/types.js';
+import { createInMemoryChatRepository } from './modules/chat/chat.memory-repository.js';
+import { chatRoutes } from './modules/chat/chat.routes.js';
+import { createChatService } from './modules/chat/chat.service.js';
+import { createLlmProviders } from './modules/chat/providers/openai-compatible.provider.js';
+import { createQuotaService } from './modules/chat/quota.service.js';
 import { healthRoutes } from './modules/health/health.routes.js';
 import securityPlugin from './plugins/security.js';
 import swaggerPlugin from './plugins/swagger.js';
@@ -46,8 +52,41 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<App> {
 
   // 5. Composition: repositories → services → routes, one register per module.
   await app.register(healthRoutes);
-  // TODO(fase 4): wire the chat here (providers → quota → chat.service → chatRoutes).
-  // The register call is in the header comment of src/modules/chat/chat.routes.ts.
+
+  // TODO(fase 2): createChatRepository(prisma) instead of the in-memory one.
+  const chatRepo = createInMemoryChatRepository();
+  const chatService = createChatService({
+    repo: chatRepo,
+    quota: createQuotaService({
+      repo: chatRepo,
+      config: {
+        queryLimit: config.CHAT_QUERY_LIMIT,
+        hardMessageLimit: config.CHAT_HARD_MESSAGE_LIMIT,
+        dailyGlobalLimit: config.CHAT_DAILY_GLOBAL_LIMIT,
+      },
+    }),
+    providers: createLlmProviders(config),
+    // TODO(fase 3): read both from the CV services (formatProfileContext and Profile).
+    loadProfileContext: async () => '',
+    getContact: async () => TEMPORARY_CONTACT,
+    hashIp: createIpHasher(config.IP_HASH_SALT),
+    config: { historyWindow: config.CHAT_HISTORY_WINDOW },
+    log: app.log,
+  });
+  await app.register(chatRoutes, {
+    service: chatService,
+    maxMessageChars: config.CHAT_MAX_MESSAGE_CHARS,
+  });
 
   return app;
 }
+
+/**
+ * Until Profile exists (fase 3), from docs/SEED-DATA.md. Never the phone (rule 2):
+ * nobody can leave a lead yet, so `phone` is always null.
+ */
+const TEMPORARY_CONTACT = {
+  email: 'lisandrocba_7@hotmail.com',
+  linkedinUrl: 'https://www.linkedin.com/in/lisandrocordoba',
+  phone: null,
+};

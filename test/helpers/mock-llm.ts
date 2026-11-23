@@ -1,18 +1,29 @@
 import { getGlobalDispatcher, MockAgent, setGlobalDispatcher, type Dispatcher } from 'undici';
 import {
-  GEMINI_ORIGIN,
-  geminiGeneratePath,
-} from '../../src/modules/chat/providers/gemini.provider.js';
-import { GROQ_CHAT_PATH, GROQ_ORIGIN } from '../../src/modules/chat/providers/groq.provider.js';
+  GEMINI_BASE_URL,
+  GROQ_BASE_URL,
+} from '../../src/modules/chat/providers/openai-compatible.provider.js';
+
+/** Splits a provider base URL into what MockAgent needs: origin + chat completions path. */
+function chatEndpoint(baseUrl: string) {
+  const url = new URL(`${baseUrl}/chat/completions`);
+  return { origin: url.origin, path: url.pathname };
+}
+
+export const GROQ_ENDPOINT = chatEndpoint(GROQ_BASE_URL);
+export const GEMINI_ENDPOINT = chatEndpoint(GEMINI_BASE_URL);
+
+// The openai SDK only parses the body as JSON when the response says so.
+const JSON_HEADERS = { 'content-type': 'application/json' };
 
 /**
- * Installs a MockAgent as the global dispatcher, so native `fetch` goes through it.
- * Real network is disabled: a request without an interceptor fails the test instead of
- * hitting a real API. Call `restore()` in afterEach.
+ * Installs a MockAgent as the global dispatcher, so native `fetch` (and the openai SDK,
+ * which uses it) goes through it. Real network is disabled: a request without an interceptor
+ * fails the test instead of hitting a real API. Call `restore()` in afterEach.
  *
  *   const llm = installMockLlm();
  *   llm.groq().reply(429, {});
- *   llm.gemini('test-gemini-model').reply(200, geminiBody('{"reply":"…"}'));
+ *   llm.gemini().reply(200, completionBody('{"reply":"…"}'));
  *   …
  *   await llm.restore();
  */
@@ -24,9 +35,16 @@ export function installMockLlm() {
 
   return {
     agent,
-    groq: () => agent.get(GROQ_ORIGIN).intercept({ path: GROQ_CHAT_PATH, method: 'POST' }),
-    gemini: (model: string) =>
-      agent.get(GEMINI_ORIGIN).intercept({ path: geminiGeneratePath(model), method: 'POST' }),
+    groq: () =>
+      agent
+        .get(GROQ_ENDPOINT.origin)
+        .intercept({ path: GROQ_ENDPOINT.path, method: 'POST' })
+        .defaultReplyHeaders(JSON_HEADERS),
+    gemini: () =>
+      agent
+        .get(GEMINI_ENDPOINT.origin)
+        .intercept({ path: GEMINI_ENDPOINT.path, method: 'POST' })
+        .defaultReplyHeaders(JSON_HEADERS),
     /** Fails if an interceptor was defined but never called (e.g. failover didn't happen). */
     assertAllCalled: () => {
       agent.assertNoPendingInterceptors();
@@ -38,18 +56,19 @@ export function installMockLlm() {
   };
 }
 
-/** Minimal successful Groq (OpenAI-compatible) body. */
-export function groqBody(content: string, totalTokens = 42) {
+/** Minimal successful chat completions body (Groq and Gemini share the OpenAI format). */
+export function completionBody(content: string, totalTokens = 42) {
   return {
+    id: 'chatcmpl-test',
+    object: 'chat.completion',
+    created: 0,
+    model: 'test-model',
     choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }],
-    usage: { total_tokens: totalTokens },
+    usage: { prompt_tokens: 30, completion_tokens: 12, total_tokens: totalTokens },
   };
 }
 
-/** Minimal successful Gemini generateContent body. */
-export function geminiBody(text: string, totalTokens = 42) {
-  return {
-    candidates: [{ content: { role: 'model', parts: [{ text }] }, finishReason: 'STOP' }],
-    usageMetadata: { totalTokenCount: totalTokens },
-  };
+/** What the LLM is asked to answer in JSON mode (LlmOutputSchema), as a string. */
+export function llmJson(reply: string, substantive = true, recruiterIntent = false) {
+  return JSON.stringify({ reply, substantive, recruiterIntent });
 }

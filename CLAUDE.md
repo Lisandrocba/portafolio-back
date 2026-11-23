@@ -7,7 +7,7 @@ API REST del portfolio de Lisandro Córdoba. Dos propósitos:
 
 El backend es también pieza de portfolio: estructura, documentación y tests tienen que estar a la altura.
 
-**Estado**: fase 1 (fundaciones) completa. El módulo `chat` existe como esqueleto (contratos completos, lógica con `notImplemented`), sin registrar en `buildApp()`. Ver [docs/ROADMAP.md](docs/ROADMAP.md).
+**Estado**: fase 1 (fundaciones) completa. `POST /chat` funciona de punta a punta, adelantado a las fases 2 y 3: usa un repository **en memoria** (`chat.memory-repository.ts`, se pierde al reiniciar) y como contexto del CV una copia fija de SEED-DATA.md (`FALLBACK_CONTEXT` en `system-prompt.ts`). Ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Stack
 
@@ -18,7 +18,7 @@ El backend es también pieza de portfolio: estructura, documentación y tests ti
 - `@fastify/swagger` + `@fastify/swagger-ui` en `/docs`
 - `@fastify/helmet`, `cors`, `rate-limit`, `under-pressure`, `sensible`
 - Env validado con `env-schema` antes de crear la instancia (no `@fastify/env`, ver ADR-026)
-- LLM: Groq (principal) → Gemini Flash-Lite (fallback), ambos vía `fetch` nativo, sin SDKs
+- LLM: Groq (principal) → Gemini Flash-Lite (fallback), ambos por su API compatible con OpenAI con el SDK `openai` (una sola clase, ADR-004)
 - Pino (el de Fastify) con `redact`
 - Gestor de paquetes: **yarn**
 
@@ -61,7 +61,7 @@ test/helpers/         build-app.ts (TEST_ENV), mock-llm.ts (MockAgent)
 - Toda variable de entorno se lee desde `app.config` (validada por `loadConfig()` de `config/env.ts`). Nunca `process.env` suelto fuera de `config/` y `server.ts`.
 - Errores de Prisma se traducen a errores de dominio (`lib/errors.ts`) **dentro del repository**.
 - Updates parciales con `PATCH`. Fechas de CV con precisión de mes (día 1).
-- Providers de LLM: usan `fetch` (no SDK) para que `MockAgent` los intercepte en tests. Ningún test le pega a una API real.
+- Providers de LLM: el SDK `openai` usa el `fetch` global, así que `MockAgent` los intercepta en tests. Ningún test le pega a una API real.
 
 ## Reglas que nunca se rompen
 
