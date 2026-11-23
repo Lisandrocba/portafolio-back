@@ -178,3 +178,17 @@ Formato: **Contexto** / **Decisión** / **Alternativa descartada** / **Consecuen
 - **Decisión**: en `package.json`, `typescript` es un alias de `@typescript/typescript6`, el paquete oficial que reexporta la API de TS 6 (y trae el binario `tsc6`). TS 7 se instala como `typescript7` y provee `tsc`, que es lo que usan `typecheck` y `build`. ESLint usa `strictTypeChecked` + `stylisticTypeChecked` con `projectService`, y `eslint-config-prettier` al final para que el formato sea solo de Prettier. lint-staged corre ESLint y Prettier sobre los archivos stageados en el `pre-commit`, y el CI corre `format:check` y `lint` sobre todo el repo.
 - **Alternativa descartada**: Biome u oxlint (nativos, sin depender de la API de TS). Son más rápidos, pero las reglas con información de tipos (`no-floating-promises`, `no-misused-promises`), que son las que más valen en un backend con Fastify y Prisma, siguen siendo más completas en typescript-eslint. También se descartó bajar el proyecto a TS 6.
 - **Consecuencia**: el lint ve los tipos con la semántica de TS 6 y el compilador usa la de TS 7. Como TS 7 es un port 1:1 de 6.0, en la práctica coinciden. Cuando typescript-eslint soporte TS 7, se elimina el alias y `typescript7` vuelve a llamarse `typescript`.
+
+## ADR-026: Env validado con `env-schema` antes de crear la instancia
+
+- **Contexto**: `trustProxy` y el nivel del logger son opciones del **constructor** de Fastify. `@fastify/env` valida el env recién al registrarse como plugin, o sea **después** de `Fastify()`. Con él, esas dos opciones tendrían que leerse de `process.env` sin validar.
+- **Decisión**: `config/env.ts` expone `loadConfig(data?)`, que llama a `env-schema` (la librería que `@fastify/env` envuelve por dentro) antes de crear la instancia. `buildApp()` construye Fastify con valores ya validados y después hace `app.decorate('config', config)`. El schema está tipado como `JSONSchemaType<Env>` de ajv: si el schema y la interfaz `Env` divergen, falla `tsc`. Con `data` (tests) se lee **solo** ese objeto (`env: false`), así el entorno de la shell no se cuela en los tests.
+- **Alternativa descartada**: `@fastify/env` + leer `TRUST_PROXY` y `LOG_LEVEL` de `process.env` a mano. Son dos variables sin validar, y un `TRUST_PROXY=ture` mal escrito pasaría en silencio.
+- **Consecuencia**: `app.config` sigue igual para el resto del código. Las variables opcionales no pueden quedar vacías (`X=`), porque llegan como `""` y fallan el `minLength`: en `.env.example` van comentadas. El ajv de `env-schema` no trae `ajv-formats`, así que no hay `format` en el schema.
+
+## ADR-027: `/health` como ruta propia, no la de under-pressure
+
+- **Contexto**: `@fastify/under-pressure` puede exponer una ruta de estado, pero la declara con JSON Schema. El serializer de `@fastify/type-provider-zod` rechaza todo schema que no sea Zod (`InvalidSchemaError`) y la app no arranca.
+- **Decisión**: under-pressure queda solo como protección (`exposeStatusRoute: false`, 503 si el event loop pasa 1 s de demora) y `GET /health` es el módulo `modules/health` con su schema Zod y `logLevel: 'silent'`.
+- **Alternativa descartada**: registrar under-pressure en un scope encapsulado con los compilers por defecto. Funciona, pero es un caso especial difícil de ver para algo que es una ruta de cuatro líneas.
+- **Consecuencia**: `/health` aparece en `/docs` como cualquier otra ruta. Si más adelante hace falta un chequeo de DB (readiness), se agrega en el mismo módulo.

@@ -101,27 +101,27 @@ Ver ADR-008 en [DECISIONS.md](DECISIONS.md).
 
 ## Variables de entorno
 
-| Variable                          | Default              | Uso                                                             |
-| --------------------------------- | -------------------- | --------------------------------------------------------------- |
-| `NODE_ENV`                        | `development`        | `development` / `test` / `production`                           |
-| `HOST` / `PORT`                   | `127.0.0.1` / `3000` | En producción `0.0.0.0`                                         |
-| `TRUST_PROXY`                     | `false`              | `true` detrás del proxy del hosting                             |
-| `LOG_LEVEL`                       | `info`               |                                                                 |
-| `DATABASE_URL`                    | —                    | Neon, conexión pooled (runtime)                                 |
-| `DIRECT_DATABASE_URL`             | —                    | Neon, conexión directa (migraciones, vía `prisma.config.ts`)    |
-| `CORS_ORIGIN`                     | —                    | Lista separada por comas (URL del portfolio + localhost en dev) |
-| `ADMIN_API_KEY`                   | —                    | Mínimo 32 caracteres                                            |
-| `IP_HASH_SALT`                    | —                    | Secreto para el HMAC de IPs                                     |
-| `GROQ_API_KEY` / `GROQ_MODEL`     | —                    | Provider principal                                              |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | —                    | Fallback (Flash-Lite)                                           |
-| `LLM_TIMEOUT_MS`                  | `15000`              | Timeout por provider antes del failover                         |
-| `CHAT_QUERY_LIMIT`                | `5`                  | Consultas sustanciales por visitante por día antes del CTA      |
-| `CHAT_HARD_MESSAGE_LIMIT`         | `20`                 | Mensajes USER totales por visitante por día (antiabuso)         |
-| `CHAT_DAILY_GLOBAL_LIMIT`         | `300`                | Requests al LLM por día, global, en memoria                     |
-| `CHAT_MAX_MESSAGE_CHARS`          | `500`                | Largo máximo del mensaje                                        |
-| `CHAT_HISTORY_WINDOW`             | `10`                 | Mensajes previos que se envían al LLM                           |
-| `LEAD_NOTIFY_EMAIL`               | —                    | `lisandrocba_7@hotmail.com`                                     |
-| `MAIL_*`                          | —                    | Pendiente según proveedor de mail                               |
-| `SEED_FORCE`                      | `false`              | Solo para `yarn db:seed`                                        |
+| Variable                          | Default              | Uso                                                                                            |
+| --------------------------------- | -------------------- | ---------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                        | `development`        | `development` / `test` / `production`                                                          |
+| `HOST` / `PORT`                   | `127.0.0.1` / `3000` | En producción `0.0.0.0`                                                                        |
+| `TRUST_PROXY`                     | `false`              | `true` detrás del proxy del hosting                                                            |
+| `LOG_LEVEL`                       | `info`               |                                                                                                |
+| `DATABASE_URL`                    | —                    | Neon, conexión pooled (runtime)                                                                |
+| `DIRECT_DATABASE_URL`             | —                    | Neon, conexión directa (migraciones, vía `prisma.config.ts`)                                   |
+| `CORS_ORIGIN`                     | vacío                | Lista separada por comas (URL del portfolio + localhost en dev). Vacío = ningún origen cruzado |
+| `ADMIN_API_KEY`                   | —                    | Mínimo 32 caracteres                                                                           |
+| `IP_HASH_SALT`                    | —                    | Secreto para el HMAC de IPs. Mínimo 16 caracteres                                              |
+| `GROQ_API_KEY` / `GROQ_MODEL`     | —                    | Provider principal                                                                             |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | —                    | Fallback (Flash-Lite). Opcionales: sin ellas, solo Groq                                        |
+| `LLM_TIMEOUT_MS`                  | `15000`              | Timeout por provider antes del failover                                                        |
+| `CHAT_QUERY_LIMIT`                | `5`                  | Consultas sustanciales por visitante por día antes del CTA                                     |
+| `CHAT_HARD_MESSAGE_LIMIT`         | `20`                 | Mensajes USER totales por visitante por día (antiabuso)                                        |
+| `CHAT_DAILY_GLOBAL_LIMIT`         | `300`                | Requests al LLM por día, global, en memoria                                                    |
+| `CHAT_MAX_MESSAGE_CHARS`          | `500`                | Largo máximo del mensaje                                                                       |
+| `CHAT_HISTORY_WINDOW`             | `10`                 | Mensajes previos que se envían al LLM                                                          |
+| `LEAD_NOTIFY_EMAIL`               | —                    | `lisandrocba_7@hotmail.com`                                                                    |
+| `MAIL_*`                          | —                    | Pendiente según proveedor de mail                                                              |
+| `SEED_FORCE`                      | `false`              | Solo para `yarn db:seed`                                                                       |
 
-Los defaults numéricos son valores iniciales razonables, para ajustar con datos reales.
+Los defaults numéricos son valores iniciales razonables, para ajustar con datos reales. El schema que valida todo esto es `src/config/env.ts`; la plantilla para el `.env` local es `.env.example`.

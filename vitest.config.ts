@@ -5,10 +5,6 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
     setupFiles: ['./test/setup.ts'],
-    // No modules yet: an empty suite is valid. Remove once the first module ships with tests,
-    // so a broken include glob fails loudly instead of passing silently.
-    passWithNoTests: true,
-
     globals: false, // explicit imports from 'vitest': no ambient globals to type
     clearMocks: true,
     restoreMocks: true,
@@ -20,7 +16,15 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/modules/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', 'src/**/*.types.ts', 'src/**/index.ts'],
+      exclude: [
+        'src/**/*.test.ts',
+        'src/**/*.d.ts',
+        'src/**/*.types.ts',
+        'src/**/index.ts',
+        // TEMPORARY: chat is a skeleton (notImplemented) not wired into buildApp yet.
+        // Remove this line as soon as the first chat piece is implemented (fase 4).
+        'src/modules/chat/**',
+      ],
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
       // Only meaningful for the full suite (yarn test:coverage); a single-file run will fail them.
